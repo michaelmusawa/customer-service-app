@@ -6,7 +6,7 @@ import UserActions from "@/components/userActions";
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <CounterProvider>
-    <div className="flex flex-col md:flex-row md:overflow-hidden relative">
+    <div className="flex flex-col md:flex-row md:overflow-hidden relative mb-14">
       <UserActions />
       <div className="flex-none md:max-w-64">
         <SideNav />

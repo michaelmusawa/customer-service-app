@@ -10,7 +10,7 @@ export default async function Page() {
   }
   return (
     <div>
-        <CreateUserPage type="attendant"/>
+        <CreateUserPage loggedInUser={session.user.role} type="attendant"/>
     </div>
   )
 }

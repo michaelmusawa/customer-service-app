@@ -11,7 +11,7 @@ export default async function Page() {
   const type = 'supervisor'
   return (
     <div>
-        <CreateUserPage type={type} />
+        <CreateUserPage loggedInUser={session.user.role} type={type} />
     </div>
   )
 }

@@ -23,7 +23,7 @@ import { Record } from '@/app/lib/definitions';
   
 
     return (
-      <div className="rounded-xl bg-green-800 p-2 shadow-md shadow-black/20 border-b-4 border-yellow-500">
+      <div className="rounded-xl bg-gradient-to-r from-green-800 to-yellow-600 p-2 shadow-md shadow-black/20 border-b-4 border-yellow-500">
         <div className="flex p-4">
           {Icon ? <Icon className="h-5 w-5 text-gray-100" /> : null}
           <h3 className="ml-2 text-sm font-medium text-gray-100">{title}</h3>

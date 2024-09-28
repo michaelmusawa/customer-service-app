@@ -63,14 +63,15 @@ export default function RecordsTable( {records, role}:{role: string | undefined,
     return (
       <div className="relative group">
         <EllipsisIcon />
-        <div className="hidden absolute -top-3 left-6 w-28 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 group-hover:block">
+        <div className="hidden absolute px-2 -top-4 left-6 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 group-hover:block">
           <div className="py-1">
             <Link 
               className="block px-1 py-1 text-sm text-gray-700 hover:bg-gray-100"
-              href={`/dashboard/supervisor/records/${recordId}/edit`} >
+              href={`/dashboard/${role}/records/${recordId}/edit`} >
               Edit
             </Link>
-            <div 
+            {role === 'admin' && (
+              <div 
               className="block px-1 py-1 text-sm text-red-700 hover:bg-red-100">
               <DeleteButton 
                 deleteFunction={() =>{deleteRecord(recordId)}} 
@@ -78,6 +79,7 @@ export default function RecordsTable( {records, role}:{role: string | undefined,
                 className={'text-sm border-t text-red-500 cursor-pointer py-1'}
               />
             </div>
+            )}  
           </div>
         </div>
       </div>
@@ -174,22 +176,23 @@ export default function RecordsTable( {records, role}:{role: string | undefined,
         </div>
         
       </div>
-      <div className='overflow-x-auto'>
+      <div className='overflow-x-auto pr-4'>
       <table className="min-w-full bg-white border border-gray-300  mx-auto">
         <thead className='bg-green-100 text-green-800 max-lg:text-sm max-sm:text-xs'>
           <tr>
-            <th className="border px-4 py-2">Tick Number</th>
+            <th className="border px-4 py-2">Ticket</th>
             <th className="border px-4 py-2">Name</th>
-            <th className="border px-4 py-2">Service Offered</th>
-            <th className="border px-4 py-2">Invoice Number</th>
+            <th className="border px-4 py-2">Service Category</th>
+            <th className="border px-4 py-2">Service</th>
+            <th className="border px-4 py-2">Invoice</th>
             <th className="border px-4 py-2">Value</th>
             <th className="border px-4 py-2">Date</th>
             <th className="border px-4 py-2">Counter</th>
             <th className="border px-4 py-2">Shift</th>
-            {(role === 'supervisor') && (
+            {(role === 'supervisor' || role === 'admin') && (
               <>
-              <th className="border px-4 py-2">User Created</th>
-              <th className="border px-4 py-2">User Email Created</th>
+              <th className="border px-4 py-2">Attendant</th>
+              <th className="border px-4 py-2">Attendant Email</th>
               <th className="border px-4 py-2">Actions</th>
               </>    
             )}
@@ -204,12 +207,13 @@ export default function RecordsTable( {records, role}:{role: string | undefined,
               <td className="border px-4 py-2">{record.ticket}</td>
               <td className="border px-4 py-2">{record.name}</td>
               <td className="border px-4 py-2">{record.service}</td>
+              <td className="border px-4 py-2">{record.subService}</td>
               <td className="border px-4 py-2">{record.invoice}</td>
               <td className="border px-4 py-2">{record.value}</td>
               <td className="border px-4 py-2"><FormatDate date={record.recordCreatedAt} /></td>
               <td className="border px-4 py-2">{record.counter}</td>
               <td className="border px-4 py-2">{record.shift}</td>
-              {(role === 'supervisor') && (
+              {(role === 'supervisor' || role === 'admin') && (
                 <>
                 <td className="border px-4 py-2">{record.userName}</td>
                 <td className="border px-4 py-2">{record.userEmail}</td>

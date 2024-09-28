@@ -15,6 +15,7 @@ const links = [
   { name: 'Profile', href: '/dashboard/attendant/profile', icon: <ProfileIcon />, role: ['attendant']},
   { name: 'Records', href: '/dashboard/attendant/records', icon: <RecordIcon />, role: ['attendant']},
   { name: 'Records', href: '/dashboard/supervisor/records', icon: <RecordIcon />, role: ['supervisor']},
+  { name: 'Records', href: '/dashboard/admin/records', icon: <RecordIcon />, role: ['admin']},
   {name: 'Supervisors', href: '/dashboard/admin/supervisors/create', icon: <UserGroupIcon />, role: ['admin']},
   {name: 'Attendants', href: '/dashboard/admin/attendants/create', icon: <UserGroupIcon  />, role: ['admin']},
   {name: 'Attendants', href: '/dashboard/supervisor/attendants/create', icon: <UserGroupIcon  />, role: ['supervisor']}

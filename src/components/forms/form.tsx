@@ -5,7 +5,6 @@ import { useFormStatus } from "react-dom"
 import { User } from "@/app/lib/definitions";
 import {
   AtSymbolIcon,
-  KeyIcon,
 } from '@heroicons/react/24/outline';
 import UserIcon from "../icons/userIcon";
 import Link from "next/link";
@@ -66,7 +65,7 @@ export default function UserForm({ user, type, label, loggedInUser }: { loggedIn
               
               
               <div className="relative">
-              <input type="password" 
+              <input type="hidden" 
                   id="password"
                   placeholder="Password" 
                   name="password" 
@@ -75,7 +74,6 @@ export default function UserForm({ user, type, label, loggedInUser }: { loggedIn
                   aria-describedby="password-error"
                   className="p-2 pl-8"
               /> 
-              <KeyIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
               </div>
               
             </div> 

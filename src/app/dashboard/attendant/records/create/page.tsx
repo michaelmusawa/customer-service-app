@@ -9,8 +9,7 @@ export default async function page() {
   if (!session){
     return redirect('/login');
   }
-    const counter = '1';
-
+  
     let shift = '';
     const currentHour = new Date().getHours(); 
     
@@ -19,11 +18,8 @@ export default async function page() {
     } else {
         shift = 'evening';
     }
-    
-   
-
 
   return (
-    <RecordForm record={undefined} shift={shift} counter={counter} userId={userId}/>
+    <RecordForm record={undefined} shift={shift} role={session.user.role} userId={userId}/>
   )
 }

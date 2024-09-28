@@ -4,11 +4,24 @@ import Logo from './logo';
 import SignOutIcon from './icons/SignOutIcon';
 import { auth, signOut } from '../../auth';
 import { redirect } from 'next/navigation';
+import { getUserById } from '@/app/lib/action';
+import bcrypt from 'bcrypt';
 
 
 export default async function SideNav() {
 
   const session = await auth();
+
+  let user;
+  if (session){
+    user = await getUserById(session.user.id);
+  }
+
+  let passwordsMatch;
+  if (user) {
+    passwordsMatch = await bcrypt.compare(user.email, user.password);
+  }
+
   
   return (
     <div className="flex flex-col px-3 py-4 md:px-2 sm">
@@ -21,7 +34,9 @@ export default async function SideNav() {
         </div>
       </Link>
       <div className="flex grow flex-row justify-between space-x-2 md:flex-col md:space-x-0 md:space-y-2">
-        <NavLinks role= {session?.user.role || ''}/>
+        {!passwordsMatch && (
+          <NavLinks role= {session?.user.role || ''}/>
+        )}
         <div className="hidden h-auto w-full grow rounded-md  md:block">
         </div>
         <form

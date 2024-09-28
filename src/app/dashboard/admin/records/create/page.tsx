@@ -22,6 +22,6 @@ export default async function page() {
 
 
   return (
-   <RecordForm record={undefined} shift={shift} role={session.user.role} userId={userId}/>
+   <RecordForm record={undefined} shift={shift} userId={userId} role={session.user.role} />
   )
 }

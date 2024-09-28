@@ -11,6 +11,6 @@ export default async function EditRecordPage({ params }: { params: { id: string 
     const id = params.id;
     const record = await getRecord(id);
   return (
-    <RecordForm role={session?.user.role} shift={record?.shift || ''} userId={record?.userId || ''} record= {record}/>
+    <RecordForm shift={record?.shift || ''} role={session.user.role} userId={record?.userId || ''} record= {record}/>
   )
 }

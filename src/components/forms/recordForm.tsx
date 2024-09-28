@@ -4,8 +4,11 @@ import { createRecord, editRecord } from "@/app/lib/action";
 import { RecordState } from "@/app/lib/definitions";
 import { useFormState, useFormStatus } from "react-dom";
 import { Record } from "@/app/lib/definitions";
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import { CounterContext } from "../counterContext";
+import { Services } from "@/app/lib/data";
+import toast from "react-hot-toast";
+import Link from "next/link";
 
 
 function SubmitButton ({editedRecord}: { editedRecord: Record | undefined }){
@@ -23,21 +26,42 @@ function SubmitButton ({editedRecord}: { editedRecord: Record | undefined }){
   )
 }
 
-export default function RecordForm({shift, userId, record}:{userId: string, shift: string, record: Record | undefined}) {
+export default function RecordForm({shift, userId, role, record}:{role:string, userId: string, shift: string, record: Record | undefined}) {
 
   const {counter} = useContext(CounterContext);
-
  
   const initialState: RecordState = { message: null, state_error: null, errors: {} };
   const [state, formAction] = useFormState(createRecord, initialState);
 
   const editRecordById = editRecord.bind(null,record?.id || '');
+    const [editState, editFormAction] = useFormState(editRecordById, initialState);
+
+ 
+
+  if (state?.message) {
+    if (state?.response === 'ok') {
+      toast.success(state.message);
+    }
+  } else if (state?.state_error) {
+    toast.error(state.state_error);
+  } else {
+    toast.dismiss();
+  }
+
+  if (editState?.message) {
+    if (editState?.response === null) {
+      toast.error(editState.message);
+    }
+  } else if (editState?.state_error) {
+    toast.error(editState.state_error);
+  }
+ 
    
   return (
     <>
 
     {record ? (
-      <form  action={editRecordById} className="space-y-4 max-w-xl mx-auto">
+      <form  action={editFormAction} className="space-y-4 max-w-xl mx-auto">
         <FormInputs />
     </form>
     ):(
@@ -49,6 +73,16 @@ export default function RecordForm({shift, userId, record}:{userId: string, shif
   );
 
   function FormInputs(){
+    const [ service, setService ] = useState<string>('Daily parking')
+  const [ subServices, setSubServices ] = useState<string[]>(Services[0].subServices)
+
+  function handleServiceChange(selectedService:string){
+    const service = Services.find((service) => service.name === selectedService);
+    if (service){
+      setService(service.name)
+      setSubServices(service.subServices)
+    }
+  }
     return(
       <>
       <div>
@@ -93,14 +127,33 @@ export default function RecordForm({shift, userId, record}:{userId: string, shif
     </div>
     <div>
       <label className="block text-sm font-medium">Service Offered</label>
-      <input
-        type="text"
+      <select 
         name="service"
-        defaultValue={record?.service || ''}
-        className="border p-2 rounded w-full"
-        required
-      />
-    </div>
+        defaultValue={service || ''}
+        onChange={(e) => handleServiceChange(e.target.value)}
+        className="border p-2 rounded-lg w-full"
+      >
+        {Services.map((service, index) => (
+          <option key={index} value={service.name}>{service.name}</option>
+        ) 
+        )}   
+      </select>
+      </div>
+      <div>
+      <label className="block text-sm font-medium">Sub Service Offered</label>
+      <select
+      name="subService"
+      defaultValue={subServices}
+      className="border p-2 rounded-lg w-full"
+      >
+        {subServices.map((subService, index) => (
+           <option key={index} value={subService}>{subService}</option>
+
+        ))}
+       
+      </select>
+      </div>
+    
     <div>
       <label className="block text-sm font-medium">Invoice Number</label>
       <input
@@ -122,7 +175,14 @@ export default function RecordForm({shift, userId, record}:{userId: string, shif
       />
     </div>
    
-    <SubmitButton editedRecord={record}/>
+    <div className="pb-2 flex gap-2">
+        <SubmitButton editedRecord={record}/>
+          <Link 
+          className="button"
+            href={`/dashboard/${role}/records`}>
+              Cancel
+          </Link>
+        </div>
       </>
     )
    

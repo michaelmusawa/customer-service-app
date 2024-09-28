@@ -6,8 +6,10 @@ import {
   fetchRecords,
   fetchDailyRevenue,
   fetchDailyRevenueByAttendant,
+  getUserById,
 } from '../lib/action';
 import { auth } from '../../../auth';
+import bcrypt from 'bcrypt';
 import { RevenueBarChart } from '@/components/dashboard/bar-graph';
 import { redirect } from 'next/navigation';
 
@@ -18,6 +20,18 @@ export default async function Page() {
   if (!session){
     return redirect('/login');
   }
+
+  const user = await getUserById(session.user.id);
+  let passwordsMatch;
+  if (user) {
+    passwordsMatch = await bcrypt.compare(user.email, user.password);
+  }
+
+  if (passwordsMatch) {
+    return redirect(`dashboard/${user?.role}/profile`)
+  }
+
+
   let records;
   let revenue;
 
@@ -37,9 +51,10 @@ export default async function Page() {
  
   return (
     <main>
-      <h1 className={`${lusitana.className} mb-4 text-lg md:text-xl lg:text-2xl`}>
+      <h1 className={`${lusitana.className} max-w-md mb-4 text-lg md:text-xl lg:text-2xl text-white bg-gradient-to-r from-green-800 to-yellow-600 p-4 rounded-lg shadow-lg`}>
         {Capitalize(`${session?.user.role} dashboard`)}
       </h1>
+
       <div className='flex grow w-full gap-6 max-lg:flex-col'>
         <div className="grid grid-cols-2 gap-6 min-h-40 grow">
           <Card title="Total Records" value={records} type="records" />

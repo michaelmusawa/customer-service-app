@@ -14,25 +14,25 @@ export default function UsersTable({users, type, loggedInUser }:{loggedInUser:st
             <h2 className="mt-8 text-sm text-gray-500">{`Existing ${type}:`}</h2>
             { users?.length ? users?.map(user => (
             <div key={user.id} 
-                className="bg-gray-100 rounded-xl p-2 px-4 flex gap-1 mb-1 items-center"
+                className="bg-gray-50 hover:bg-gray-100 rounded-xl p-2 px-4 flex gap-1 mb-1 items-center"
             >
                 <div className="grow max-sm:hidden">{user.name} </div>
                 <div className="grow text-gray-500">{user.email} </div>
                 <div className="flex gap-1">
                 <Link 
-                    className='button'
+                    className='button hover:bg-gray-200'
                     href={`/dashboard/${loggedInUser}/${type}s/${user.id}/edit`}>
                         Edit
                 </Link>
                 <DeleteButton 
                     deleteFunction={() =>{deleteUser(user.id)}} 
                     label={'Delete'}
-                    className={'button cursor-pointer bg-red-100 hover:bg-red-300'}
+                    className={'button cursor-pointer hover:bg-red-100'}
                 />
                 </div>
 
             </div>
-            )):<p>No supervisors found</p>}
+            )):<p>{`No ${type} found`}</p>}
       </div>
         
     </div>

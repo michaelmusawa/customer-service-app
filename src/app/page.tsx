@@ -22,12 +22,14 @@ export default function Page() {
             <span>Log in</span> <ArrowRightIcon className="w-5 md:w-6" />
           </Link>
         </div>
-        <div className="flex max-h-lvh w-auto items-center justify-center p-6 md:w-3/5 md:px-28 md:py-12">
+        <div className="flex max-h-svh w-auto items-center justify-center p-6 md:w-3/5 md:px-28 md:py-12 bg-cover bg-center"
+            style={{ backgroundImage: `url('/images/nairobibackgroung.jpg')` }}>
           <Image
-            src={"/images/nairobibackgroung.jpg"}
-            width="1920"
-            height="883"
-            alt=" County Logo image" 
+            src={"/images/customerService.png"}
+            width="2000"
+            height="2000"
+            alt=" customer service image" 
+            className='max-h-96 w-auto transform rotate-y-180'
           />
         </div>
       </div>

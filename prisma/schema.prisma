@@ -33,7 +33,8 @@ model Record {
   id            String          @id @default(cuid())
   ticket        String
   name          String
-  service         String         
+  service         String  
+  subService         String?        
   invoice      String
   value        Int
   counter          String

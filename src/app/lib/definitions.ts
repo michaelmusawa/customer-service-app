@@ -15,6 +15,7 @@ export type Record = {
     invoice: string;
     recordId: string;
     service: string;
+    subService: string;
     shift: string;
     recordCreatedAt: Date;
     createdAt: Date;
@@ -33,10 +34,9 @@ export type RecordState = {
         value?: string[];
         invoice?: string[];
         service?: string[];
+        subService?: string[];
         shift?: string[];
-        date?: string[];
-        userId?: string[];
-        
+        userId?: string[];  
     };
     state_error?: string | null;
     message?: string | null;

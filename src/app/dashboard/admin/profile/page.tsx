@@ -3,7 +3,7 @@
 import { getUser } from '@/app/lib/action'
 import { auth } from '../../../../../auth';
 import { redirect } from 'next/navigation';
-import ProfileForm from '@/components/forms/profile';
+import ProfileCard from '@/components/ProfileCard';
 
 export default async function page() {
   const session = await auth();
@@ -14,7 +14,7 @@ export default async function page() {
   
   return (
     <div>
-      <ProfileForm user = {admin} type={'admin'} />
+      <ProfileCard user = {admin} type={'admin'} />
     </div>
     
   )

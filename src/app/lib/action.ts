@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { auth, signIn } from '../../../auth';
 import { AuthError } from 'next-auth';
-import { Record, User, UserState } from './definitions';
+import { Record, RecordState, User, UserState } from './definitions';
 import { z } from 'zod';
 import pool from './db';
 import bcrypt from 'bcrypt';
@@ -87,9 +87,14 @@ export async function createUser( prevState: UserState, formData: FormData ) {
     }
 
     const { name, email,password, role } = validatedFields.data;
-
+    let userPassword = '';
+    if (password === ''){
+      userPassword = email
+    } else { 
+      userPassword = password;
+    }
     const salt = bcrypt.genSaltSync(10);
-    const pass = password;
+    const pass = userPassword;
     const hashedPass = bcrypt.hashSync(pass, salt);
     const id = crypto.randomUUID();
     const session = await auth();
@@ -123,8 +128,7 @@ export async function createUser( prevState: UserState, formData: FormData ) {
 
 
 export async function editUser( id: string, prevState: UserState, formData: FormData) {
-  console.log(formData)
-  return
+
   const validatedFields = FormSchema.safeParse({
     name:formData.get('name'),
     email:formData.get('email'),
@@ -142,22 +146,52 @@ export async function editUser( id: string, prevState: UserState, formData: Form
 
   const { name, email, password, role, image } = validatedFields.data;
 
-  const salt = bcrypt.genSaltSync(10);
-  const hashedPass = bcrypt.hashSync(password, salt); 
+  let userPassword = '';
+  if (password === ''){
+    userPassword = email
+  } else { 
+    userPassword = password;
+  }
 
+  const salt = bcrypt.genSaltSync(10);
+  const hashedPass = bcrypt.hashSync(userPassword, salt); 
+  
   let imagePath='';
 
-  console.log(image)
+  try {
+    const res = await pool.query<User>(`
+      SELECT * FROM "User" 
+      WHERE id='${id}'
+      `);
 
-  if (image){
-    await fs.mkdir("public/profile",{recursive: true});
-    imagePath = `/profile/${crypto.randomUUID()}-${image.name}`
-    await fs.writeFile(`public${imagePath}`, Buffer.from(await image.arrayBuffer()))
+      if (res.rows[0].image) {
+        imagePath = res.rows[0].image;
+        // Delete the existing image file if it exists
+        await fs.unlink(`public${imagePath}`).catch(err => {
+          if (err.code !== 'ENOENT') {
+            // Ignore file not found error but log other errors
+            console.error('Error deleting image:', err);
+            throw new Error('Failed to delete existing image.');
+          }
+        });
+      }
+    
+      // If a new image is uploaded (size > 0)
+      if (image && image.size > 0) {
+        await fs.mkdir("public/profile", { recursive: true });
+        imagePath = `/profile/${crypto.randomUUID()}-${image.name}`;
+        await fs.writeFile(`public${imagePath}`, Buffer.from(await image.arrayBuffer()));
+      } else if (res.rows[0].image) {
+        // If no new image is uploaded, keep the existing image
+        imagePath = res.rows[0].image;
+      }
+    
+  } catch (error) {
+     console.error('Failed to fetch user:', error);
+     throw new Error('Failed to fetch user.');
   }
 
   const session = await auth();
-
-  console.log("this is the image path",imagePath)
 
   try {
     await pool.query(`
@@ -182,8 +216,14 @@ export async function editUser( id: string, prevState: UserState, formData: Form
   );
     
   };
+
+  if (session?.user.role === role){
+    revalidatePath(`/dashboard/${session?.user.role}/profile`);
+    redirect(`/dashboard/${session?.user.role}/profile`)
+  }
+  
   revalidatePath(`/dashboard/${session?.user.role}/${role}s/create`);
-  redirect(`/dashboard/admin/profile`)
+  redirect(`/dashboard/${session?.user.role}/${role}s/create`)
 } 
 
 export async function getUser(email: string): Promise<User | undefined> {
@@ -235,6 +275,7 @@ const RecordSchema = z.object({
   name: z.string(),
   ticketNumber: z.string(),
   service: z.string(),
+  subService: z.string(),
   value: z.coerce.number(),
   invoice: z.string(),
   counter: z.string(),
@@ -242,12 +283,13 @@ const RecordSchema = z.object({
   userId: z.string(),
 });
 
-export async function createRecord( prevState: UserState, formData: FormData ) {
-  
-  const { name, ticketNumber, value, invoice, counter, shift, service, userId } = RecordSchema.parse({
+export async function createRecord( prevState: RecordState, formData: FormData ) {
+   
+  const validatedFields = RecordSchema.safeParse({
     ticketNumber: formData.get('ticketNumber'),
     name: formData.get('name'),
     service: formData.get('service'),  
+    subService: formData.get('subService'), 
     invoice: formData.get('invoice'),
     value: formData.get('value'),
     counter: formData.get('counter'),
@@ -255,38 +297,65 @@ export async function createRecord( prevState: UserState, formData: FormData ) {
     userId: formData.get('userId')
   });
 
-  console.log(formData);
-  
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Missing Fields. Failed to Edit Record.',
+    };
+  }
+
+  const { name, ticketNumber, value, invoice, counter, shift, service, subService, userId } = validatedFields.data;
+
     const id = crypto.randomUUID();
+    const session = await auth();
 
     try {
         await pool.query(`
-            INSERT INTO "Record" (id, name, "ticket", value, shift, service, invoice, counter, "userId")
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            `,[id, name, ticketNumber, value, shift, service,invoice, counter, userId]);   
+            INSERT INTO "Record" (id, name, "ticket", value, shift, service, invoice, counter, "userId", "subService")
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            `,[id, name, ticketNumber, value, shift, service,invoice, counter, userId, subService]); 
+
+            revalidatePath(`/dashboard/${session?.user.role}/records/create`); 
+            return(
+              {
+                message: 'Record created successfully',
+                response: 'ok'
+              }
+            );
 
     } catch (e) {
       console.log(e);
         return (
            { state_error: "Something went wrong! Failed to create record." }
           );      
-    }
-    const session = await auth();
-    redirect(`/dashboard/${session?.user.role}/records`);   
-    
+    }  
 };
-export async function editRecord(id: string, formData: FormData){
-  const { name, ticketNumber, value, invoice, counter, shift, service, userId } = RecordSchema.parse({
+
+
+export async function editRecord(id: string, prevState: RecordState, formData: FormData){
+  const validatedFields = RecordSchema.safeParse({
     ticketNumber: formData.get('ticketNumber'),
     name: formData.get('name'),
     service: formData.get('service'),  
+    subService: formData.get('subService'), 
     invoice: formData.get('invoice'),
     value: formData.get('value'),
     counter: formData.get('counter'),
     shift: formData.get('shift'),
     userId: formData.get('userId')
   });
-   
+
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Missing Fields. Failed to Edit Record.',
+    };
+  }
+
+  const { name, ticketNumber, value, invoice, counter, shift, service, subService, userId } = validatedFields.data;
+
+  const session = await auth();
+
   try {
     await pool.query(`
       UPDATE "Record"
@@ -298,16 +367,20 @@ export async function editRecord(id: string, formData: FormData){
         service = $5,
         invoice = $6,
         counter = $7,
-        "userId" = $8
-      WHERE id = $9
-        `,[name, ticketNumber, value, shift, service, invoice, counter, userId, id])
-
-        revalidatePath('/supervisor/records')
-    
-  } catch (error) {
-    console.error("Something went wrong updating supervisor",error);
-    
+        "userId" = $8,
+        "subService" = $9
+      WHERE id = $10
+        `,[name, ticketNumber, value, shift, service, invoice, counter, userId, subService, id])
+  } catch (e) {
+    console.log(e);
+      return (
+          { state_error: "Something went wrong! Failed to update record." ,
+            response: null
+          }
+        );      
   }
+  revalidatePath(`/dashboard/${session?.user.role}/records`);
+  redirect(`/dashboard/${session?.user.role}/records`);
 } 
 
 
@@ -334,6 +407,7 @@ export async function fetchRecordsByAttendant(userId:string){
         r.ticket,
         r.name,
         r.service,
+        r."subService",
         r.invoice,
         r.value,
         r.counter,
@@ -370,6 +444,7 @@ export async function fetchRecords(){
         r.ticket,
         r.name,
         r.service,
+        r."subService",
         r.invoice,
         r.value,
         r.counter,

@@ -2,11 +2,23 @@ import { getUserById } from '@/app/lib/action';
 import EditUserPage from '../../../_components/editUser';
 import { auth } from '../../../../../../../auth';
 import { notFound, redirect } from 'next/navigation';
+import Link from 'next/link';
 
 export default async function Page({params}:{params:{id:string}}) {
   const session = await auth();
   if (!session){
     return redirect('/login');
+  } else if (session?.user.role !== 'admin'){
+    return(
+      <div>
+        <h1>You are not authorized to visit this page!</h1>
+        <Link
+        className="button" 
+          href='/login'>
+          Go to Login
+        </Link>
+      </div>
+    )
   }
     const id = params.id;
     const user = await getUserById(id);

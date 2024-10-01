@@ -51,7 +51,7 @@ export default async function Page() {
  
   return (
     <main>
-      <h1 className={`${lusitana.className} max-w-md mb-4 text-lg md:text-xl lg:text-2xl text-white bg-gradient-to-r from-green-800 to-yellow-600 p-4 rounded-lg shadow-lg`}>
+      <h1 className={`${lusitana.className} max-w-md mb-4 max-lg:max-w-xs text-lg md:text-xl lg:text-2xl text-white bg-gradient-to-r from-green-800 to-yellow-600 p-4 rounded-lg shadow-lg`}>
         {Capitalize(`${session?.user.role} dashboard`)}
       </h1>
 

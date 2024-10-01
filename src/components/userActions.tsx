@@ -15,20 +15,20 @@ export default async function UserActions() {
     }
 
   return (
-    <>
-    <div className="absolute right-[335px] max-sm:right-4 top-4 max-md:top-5 rounded-full border-2 border-yellow-600 ">
+    <div>
+    <div className="absolute right-[335px] max-lg:right-72 max-sm:right-60 top-4 max-md:top-5 rounded-full border-2 border-yellow-600 max-sm:mt-2">
     <Link href={`/dashboard/${session?.user.role}/profile`}>
       <Image
         src={session?.user.image || '/profile/avator.jpg'}
         height={60} 
         width={60} 
         alt="profile pic"
-        className="m-1 rounded-full"
+        className="m-1 rounded-full w-[60px] h-[60px] max-sm:w-[40px] max-sm:h-[40px]"
       />
      </Link>
     </div>
     
-     <div className="flex gap-4 absolute right-12 max-sm:right-4 top-3 max-md:top-5
+     <div className="flex gap-4 max-sm:gap-1 absolute right-12 max-sm:right-4 top-3 max-md:top-5
              items-center shadow-md shadow-black/20 text-sm 
              border-b-4 bg-green-800 border-yellow-500 rounded-lg">
       <div className="bg-gray-50 py-2 px-5 border rounded-lg max-lg:py-2 max-lg:px-2">
@@ -44,7 +44,7 @@ export default async function UserActions() {
     </div>
     </div>
     
-    </>
+    </div>
    
   )
 }

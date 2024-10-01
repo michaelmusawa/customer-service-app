@@ -39,7 +39,7 @@ import { Record } from '@/app/lib/definitions';
           <h2
           className={`${lusitana.className} bg-gray-50 truncate rounded-xl px-4 py-8 text-center bold text-4xl max-md:text-xl text-green-800 font-extrabold max-md:font-bold`}
         >
-         Ksh. {value?.[0].totalValue || 0}
+         <span className='max-xl:hidden'>Ksh.</span> {value?.[0].totalValue || 0}
         </h2>
         )}
       </div>

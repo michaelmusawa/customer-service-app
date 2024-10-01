@@ -180,7 +180,7 @@ export async function editUser( id: string, prevState: UserState, formData: Form
       if (image && image.size > 0) {
         await fs.mkdir("public/profile", { recursive: true });
         imagePath = `/profile/${crypto.randomUUID()}-${image.name}`;
-        await fs.writeFile(`public${imagePath}`, Buffer.from(await image.arrayBuffer()));
+        await fs.writeFile(`public${imagePath}`, Buffer.from(await image.arrayBuffer())as Uint8Array);
       } else if (res.rows[0].image) {
         // If no new image is uploaded, keep the existing image
         imagePath = res.rows[0].image;

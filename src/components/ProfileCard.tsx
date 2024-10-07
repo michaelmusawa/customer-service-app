@@ -18,7 +18,7 @@ export default function ProfileCard({user, type}:{user: User | undefined , type:
         <h1 className="text-gray-500 mb-8">{user?.email}</h1>
         <Link href={`/dashboard/${type}/profile/${user!.id}/edit`}
             className="button bg-green-800">
-                <span className="text-gray-100">Update</span>
+                <span className="text-gray-100">Edit profile</span>
         </Link>
       </div>
     </div>

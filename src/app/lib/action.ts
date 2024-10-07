@@ -482,7 +482,6 @@ export async function fetchDailyRevenue() {
       GROUP BY DATE("createdAt")
       ORDER BY DATE("createdAt") DESC;
     `);
-      console.log("the fucking res",res.rows);
     return res.rows;
   } catch (error) {
     console.error("Error fetching daily revenue", error);
@@ -502,7 +501,6 @@ export async function fetchDailyRevenueByAttendant(id:string) {
       ORDER BY DATE("createdAt") DESC
       
     `,[id]);
-      console.log("the fucking res by att",res.rows);
     return res.rows;
   } catch (error) {
     console.error("Error fetching daily revenue", error);

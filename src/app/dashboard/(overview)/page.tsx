@@ -1,14 +1,14 @@
 import { Card } from '@/components/card';
 import LatestInvoices from '@/components/latest-invoices';
-import { lusitana } from '../fonts/fonts';
+import { lusitana } from '../../fonts/fonts';
 import {
   fetchRecordsByAttendant,
   fetchRecords,
   fetchDailyRevenue,
   fetchDailyRevenueByAttendant,
   getUserById,
-} from '../lib/action';
-import { auth } from '../../../auth';
+} from '../../lib/action';
+import { auth } from '../../../../auth';
 import bcrypt from 'bcrypt';
 import { RevenueBarChart } from '@/components/dashboard/bar-graph';
 import { redirect } from 'next/navigation';

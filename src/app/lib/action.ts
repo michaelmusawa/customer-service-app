@@ -1,14 +1,25 @@
 'use server';
  
 import { redirect } from 'next/navigation';
-import { auth, signIn } from '../../../auth';
+import { auth, signIn, signOut } from '../../../auth';
 import { AuthError } from 'next-auth';
-import { Record, RecordState, User, UserState } from './definitions';
-import { z } from 'zod';
+import { EditedRecord, OnlineUser, Record, RecordState, User, UserState } from './definitions';
+import {  z } from 'zod';
 import pool from './db';
 import bcrypt from 'bcrypt';
 import { revalidatePath } from 'next/cache';
 import fs from 'fs/promises'
+import cron from 'node-cron'
+
+cron.schedule('0 * * * *', async () => {
+  try {
+    await pool.query('DELETE FROM "ShiftNotification" WHERE "expires" <= NOW()');
+    await pool.query('DELETE FROM "Session" WHERE "expires" <= NOW()');
+    console.log('Expired records deleted');
+  } catch (err) {
+    console.error('Error deleting expired records:', err);
+  }
+});
 
 export async function authenticate(
   _currentState: unknown,
@@ -22,10 +33,10 @@ export async function authenticate(
         redirect: false,
     })
 
-    if (res.error) {
-    }
+    if (!res.error) {
       redirect("/dashboard")
-   
+    }
+
 
   } catch (error) {
     if (error instanceof AuthError) {
@@ -38,6 +49,29 @@ export async function authenticate(
     }
     throw error;
   }
+}
+
+export async function signUserOut (){
+  const session = await auth();
+  const userId = session?.user.id;
+
+  if (userId) {
+    try {
+      await pool.query(`
+        DELETE FROM "Session"
+        WHERE "userId" = $1
+        `,[userId]);
+
+    await signOut();
+
+    }catch (e) {
+      console.error("Something went wrong deleting record!", 
+        e);
+    }
+  
+  }
+
+  redirect('/login');
 }
 
 export async function fetchUsers(user:string){
@@ -53,6 +87,22 @@ export async function fetchUsers(user:string){
     
   } catch (error) {
     console.error("Something went wrong fetching supervisors",error)
+    
+  }
+}
+
+export async function fetchOnlineUsers(){
+  try {
+    const res = await pool.query<OnlineUser>(`
+      SELECT * FROM "Session"
+      `,)
+      const users = res.rows
+      if (users.length > 0){
+        return users
+      } else [];
+    
+  } catch (error) {
+    console.error("Something went wrong fetching online users",error)
     
   }
 }
@@ -74,8 +124,7 @@ export async function createUser( prevState: UserState, formData: FormData ) {
     name: formData.get('name'),
     email: formData.get('email'),
     password: formData.get('password'),  
-    role: formData.get('role'),
-   
+    role: formData.get('role')
   });
 
     if (!validatedFields.success) {
@@ -104,13 +153,15 @@ export async function createUser( prevState: UserState, formData: FormData ) {
         await pool.query(`
             INSERT INTO "User" (id, name, email, password, role)
             VALUES ($1, $2, $3, $4, $5)
-            `,[id, name, email, hashedPass, role]);  
-            revalidatePath(`/dashboard/${session?.user.role}/${role}s/create`)
+            `,[id, name, email, hashedPass, role]);
+
+            revalidatePath(`/dashboard/${session?.user.role}/${role}s/create`);
 
           return (
             { 
               message: `Added ${role} successfully`,
-              response:'ok'
+              response:'ok',
+              state_error: `Something went wrong! Failed to create ${role}.`,
             }
           );  
 
@@ -119,7 +170,7 @@ export async function createUser( prevState: UserState, formData: FormData ) {
         return (
            { 
             state_error: `Something went wrong! Failed to create ${role}.`,
-            response: null,
+            response: '!ok'
           }
           );      
     }
@@ -146,25 +197,47 @@ export async function editUser( id: string, prevState: UserState, formData: Form
 
   const { name, email, password, role, image } = validatedFields.data;
 
-  let userPassword = '';
-  if (password === ''){
-    userPassword = email
-  } else { 
-    userPassword = password;
-  }
-
-  const salt = bcrypt.genSaltSync(10);
-  const hashedPass = bcrypt.hashSync(userPassword, salt); 
+ 
+  let hashedPass;
   
-  let imagePath='';
+  let imagePath=null;
+  const session = await auth();
+
+  function generateHash (userPassword:string){
+
+    const salt = bcrypt.genSaltSync(10);
+    hashedPass = bcrypt.hashSync(userPassword, salt);
+
+    return hashedPass
+  }
+  
+  
+
 
   try {
     const res = await pool.query<User>(`
       SELECT * FROM "User" 
-      WHERE id='${id}'
-      `);
+      WHERE id = $1
+      `,[id]);
 
-      if (res.rows[0].image) {
+      // Logic for password
+
+      if (res.rows[0].id === session?.user.id) {
+        if (password === '' && res.rows[0].password){
+          hashedPass = res.rows[0].password;
+        } else  
+          hashedPass = generateHash(password);
+      } else if (password === ''){
+        hashedPass = generateHash(email)
+      } else { 
+        console.log("The password", password) 
+        hashedPass = generateHash(password);
+      } 
+    
+
+      // Logic for user image
+
+      if (res.rows[0].image && image.size > 0) {
         imagePath = res.rows[0].image;
         // Delete the existing image file if it exists
         await fs.unlink(`public${imagePath}`).catch(err => {
@@ -191,7 +264,6 @@ export async function editUser( id: string, prevState: UserState, formData: Form
      throw new Error('Failed to fetch user.');
   }
 
-  const session = await auth();
 
   try {
     await pool.query(`
@@ -203,7 +275,7 @@ export async function editUser( id: string, prevState: UserState, formData: Form
         role = $4,
         image = $5
         WHERE id = $6
-        `,[name,email,hashedPass, role, imagePath, id]);     
+        `,[name, email, hashedPass, role, imagePath, id]);     
   
     
   } catch (error) {
@@ -219,12 +291,192 @@ export async function editUser( id: string, prevState: UserState, formData: Form
 
   if (session?.user.role === role){
     revalidatePath(`/dashboard/${session?.user.role}/profile`);
-    redirect(`/dashboard/${session?.user.role}/profile`)
+    redirect(`/dashboard/${session?.user.role}/profile?success=true`)
   }
   
   revalidatePath(`/dashboard/${session?.user.role}/${role}s/create`);
   redirect(`/dashboard/${session?.user.role}/${role}s/create`)
 } 
+
+const ArchiveUserSchema = z.object ({
+  status: z.string(),
+  role: z.string()
+})
+
+export async function archiveUser( id: string, prevState: UserState, formData: FormData) {
+
+  const validatedFields = ArchiveUserSchema.safeParse({
+    status:formData.get('status'),
+    role:formData.get('role')
+  });
+  
+
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Missing Fields. Failed to archive user.',
+    };
+  }
+
+  const { status, role } = validatedFields.data;
+  const session = await auth();
+
+  let userStatus;
+
+  if (status === 'activate'){
+    userStatus = null
+  } else if (status === 'archive'){
+    userStatus = status
+  }
+
+
+  try {
+    await pool.query(`
+      UPDATE "User"
+      SET
+        status = $1
+        WHERE id = $2
+        `,[userStatus, id]);  
+        
+        revalidatePath(`/dashboard/${session?.user.role}/${role}s/create`);
+        return(
+          {
+          message: 'Status updated successfully',
+          response: 'ok'
+          }
+          )
+ 
+  } catch (error) {
+    console.error("Something went wrong achieving user",error);
+    return(
+      {
+      state_error: 'Error achieving user',
+      response: '!ok'
+    }
+  );
+    
+  };
+  
+  
+} 
+
+const ShiftAndCounterUserSchema = z.object ({
+  counter: z.coerce.number(),
+  shift: z.string(),
+  startDate: z.string(),
+  endDate: z.string(),
+  role: z.string(),
+})
+
+export async function assignShiftAndCounter( id: string, prevState: UserState, formData: FormData) {
+
+  const validatedFields = ShiftAndCounterUserSchema.safeParse({
+    counter:formData.get('counter'),
+    shift:formData.get('shift'),
+    startDate:formData.get('startDate'),
+    endDate:formData.get('endDate'),
+    role: formData.get('role'),
+  });
+
+  
+
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Missing Fields. Failed to archive user.',
+    };
+  }
+
+  const { counter,shift,startDate, endDate, role} = validatedFields.data;
+
+  const shiftStartDate = new Date(startDate);
+  const shiftEndDate = new Date(endDate);
+
+  const session = await auth();
+
+
+  try {
+    await pool.query(`
+      UPDATE "User"
+      SET
+        counter = $1,
+        shift = $2,
+        "shiftStartDate" = $3,
+        "shiftEndDate" = $4
+        WHERE id = $5
+        `,[counter, shift, shiftStartDate, shiftEndDate, id]);  
+
+               
+        revalidatePath(`/dashboard/${session?.user.role}/${role}s/create`);
+        return(
+          {
+          message: 'Shift updated successfully',
+          response: 'ok'
+          }
+          )
+ 
+  } catch (error) {
+    console.error("Something went wrong updating user shift",error);
+    return(
+      {
+      state_error: 'Error updating user shift',
+      response: '!ok'
+    }
+  );
+    
+  };
+  
+  
+} 
+
+const ShiftWarningActionSchema = z.object ({
+  attendantId: z.string(),
+  dismiss: z.string()
+})
+
+export async function shiftWarningAction(prevState: UserState, formData: FormData){
+  const validatedFields = ShiftWarningActionSchema.safeParse({
+    attendantId:formData.get('attendantId'),
+    dismiss:formData.get('dismiss'),
+    
+  });
+
+  console.log("the shift warning form data",formData)
+
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Missing Fields. Failed to archive user.',
+    };
+  }
+
+  const { attendantId, dismiss } = validatedFields.data;
+
+  const session = await auth();
+  const supervisorId = session?.user.id;
+  const id = crypto.randomUUID();
+  const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  try {
+    await pool.query(`
+      INSERT INTO "ShiftNotification"
+      ("id", "attendantId", "supervisorId", "dismiss", "expires" )
+      VALUES ($1, $2, $3, $4, $5)
+      `,[id, attendantId, supervisorId, dismiss, expires])
+    
+  } catch (error) {
+    console.error("Something went wrong creating shift action",error);
+    return(
+      {
+      state_error: 'Error creating shift action',
+      response: '!ok'
+    }
+  );
+    
+  }
+
+
+}
 
 export async function getUser(email: string): Promise<User | undefined> {
   try {
@@ -274,28 +526,34 @@ export async function deleteUser(id: string){
 const RecordSchema = z.object({
   name: z.string(),
   ticketNumber: z.string(),
+  recordNumber: z.string(),
+  recordType: z.string(),
   service: z.string(),
   subService: z.string(),
   value: z.coerce.number(),
-  invoice: z.string(),
   counter: z.string(),
   shift: z.string(),
   userId: z.string(),
+  recordId: z.string().optional(),
+  attendantComment: z.string().optional(),
+  supervisorComment: z.string().optional(),
 });
 
 export async function createRecord( prevState: RecordState, formData: FormData ) {
    
   const validatedFields = RecordSchema.safeParse({
     ticketNumber: formData.get('ticketNumber'),
+    recordType: formData.get('recordType'),
     name: formData.get('name'),
     service: formData.get('service'),  
     subService: formData.get('subService'), 
-    invoice: formData.get('invoice'),
+    recordNumber: formData.get('recordNumber'),
     value: formData.get('value'),
     counter: formData.get('counter'),
     shift: formData.get('shift'),
     userId: formData.get('userId')
   });
+
 
   if (!validatedFields.success) {
     return {
@@ -304,16 +562,16 @@ export async function createRecord( prevState: RecordState, formData: FormData )
     };
   }
 
-  const { name, ticketNumber, value, invoice, counter, shift, service, subService, userId } = validatedFields.data;
+  const { name, ticketNumber, recordType, value, recordNumber, counter, shift, service, subService, userId } = validatedFields.data;
 
     const id = crypto.randomUUID();
     const session = await auth();
 
     try {
         await pool.query(`
-            INSERT INTO "Record" (id, name, "ticket", value, shift, service, invoice, counter, "userId", "subService")
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-            `,[id, name, ticketNumber, value, shift, service,invoice, counter, userId, subService]); 
+            INSERT INTO "Record" (id, name, "ticket", value, shift, service, "recordNumber", counter, "userId", "subService", "recordType")
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            `,[id, name, ticketNumber, value, shift, service, recordNumber, counter, userId, subService, recordType]); 
 
             revalidatePath(`/dashboard/${session?.user.role}/records/create`); 
             return(
@@ -327,6 +585,59 @@ export async function createRecord( prevState: RecordState, formData: FormData )
       console.log(e);
         return (
            { state_error: "Something went wrong! Failed to create record." }
+          );      
+    }  
+};
+
+export async function requestEditRecord( prevState: RecordState, formData: FormData ) {
+   
+  const validatedFields = RecordSchema.safeParse({
+    ticketNumber: formData.get('ticketNumber'),
+    recordType: formData.get('recordType'),
+    name: formData.get('name'),
+    service: formData.get('service'),  
+    subService: formData.get('subService'), 
+    recordNumber: formData.get('recordNumber'),
+    value: formData.get('value'),
+    counter: formData.get('counter'),
+    shift: formData.get('shift'),
+    userId: formData.get('userId'),
+    recordId: formData.get('recordId'),
+    attendantComment: formData.get('attendantComment'),
+  });
+
+ 
+
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Missing Fields. Failed to validate record values.',
+    };
+  }
+
+  const { name, ticketNumber, recordType, value, recordNumber, counter, shift, service, subService, userId, recordId, attendantComment } = validatedFields.data;
+
+    const id = crypto.randomUUID();
+    const session = await auth();
+
+    try {
+        await pool.query(`
+            INSERT INTO "EditedRecord" (id, name, "ticket", value, shift, service, "recordNumber", counter, "attendantId", "subService", "recordType", "recordId", status, "attendantComment")
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+            `,[id, name, ticketNumber, value, shift, service, recordNumber, counter, userId, subService, recordType, recordId, 'pending', attendantComment]); 
+
+            revalidatePath(`/dashboard/${session?.user.role}/records/create`); 
+            return(
+              {
+                message: 'Request send successfully',
+                response: 'ok'
+              }
+            );
+
+    } catch (e) {
+      console.log(e);
+        return (
+           { state_error: "Something went wrong! Failed to send request." }
           );      
     }  
 };
@@ -381,6 +692,54 @@ export async function editRecord(id: string, prevState: RecordState, formData: F
   }
   revalidatePath(`/dashboard/${session?.user.role}/records`);
   redirect(`/dashboard/${session?.user.role}/records`);
+}
+
+const RequestEditRecordSchema = z.object({
+  supervisorId: z.string(),
+  status: z.string(),
+  supervisorComment: z.string()
+});
+
+export async function editRequestEditRecord(id: string, prevState: RecordState, formData: FormData){
+  const validatedFields = RequestEditRecordSchema.safeParse({
+    supervisorId: formData.get('supervisorId'),
+    supervisorComment: formData.get('supervisorComment'),
+    status: formData.get('status')
+  });
+
+  if (!validatedFields.success) {
+    console.log("The validated file",validatedFields.error);
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Missing Fields. Failed to Edit Record.',
+    };
+  }
+
+
+  const { supervisorComment, supervisorId, status } = validatedFields.data;
+  console.log("The validated file",validatedFields.data);
+ 
+  const session = await auth();
+
+  try {
+    await pool.query(`
+      UPDATE "EditedRecord"
+      SET
+        status = $1,
+        "supervisorId" = $2,
+        "supervisorComment" = $3
+      WHERE id = $4
+        `,[status, supervisorId, supervisorComment, id ])
+  } catch (error) {
+    console.error("Something went wrong updating edited record",error);
+      return (
+          { state_error: "Something went wrong! Failed to update record." ,
+            response: null
+          }
+        );      
+  }
+  revalidatePath(`/dashboard/${session?.user.role}/notification`);
+  redirect(`/dashboard/${session?.user.role}/notification`);
 } 
 
 
@@ -405,10 +764,11 @@ export async function fetchRecordsByAttendant(userId:string){
       SELECT 
         r.id AS "recordId",
         r.ticket,
+        r."recordType",
         r.name,
         r.service,
         r."subService",
-        r.invoice,
+        r."recordNumber",
         r.value,
         r.counter,
         r.shift,
@@ -420,6 +780,8 @@ export async function fetchRecordsByAttendant(userId:string){
         u.email AS "userEmail",
         u."createdAt" AS "userCreatedAt",
         SUM(r.value) OVER() AS "totalValue",
+        SUM(CASE WHEN r."recordType" = 'invoice' THEN r.value ELSE 0 END) OVER () AS "invoiceTotal",
+        SUM(CASE WHEN r."recordType" = 'receipt' THEN r.value ELSE 0 END) OVER () AS "receiptTotal"
         u."createdAt" AS "userCreatedAt"
       FROM "Record" r
       JOIN "User" u ON r."userId" = u.id
@@ -442,10 +804,11 @@ export async function fetchRecords(){
       SELECT 
         r.id AS "recordId",
         r.ticket,
+        r."recordType",
         r.name,
         r.service,
         r."subService",
-        r.invoice,
+        r."recordNumber",
         r.value,
         r.counter,
         r.shift,
@@ -456,7 +819,9 @@ export async function fetchRecords(){
         u.name AS "userName",
         u.email AS "userEmail",
         u."createdAt" AS "userCreatedAt",
-        SUM(r.value) OVER() AS "totalValue"
+        SUM(r.value) OVER() AS "totalValue",
+        SUM(CASE WHEN r."recordType" = 'invoice' THEN r.value ELSE 0 END) OVER () AS "invoiceTotal",
+        SUM(CASE WHEN r."recordType" = 'receipt' THEN r.value ELSE 0 END) OVER () AS "receiptTotal"
       FROM "Record" r
       JOIN "User" u ON r."userId" = u.id
       `);
@@ -469,6 +834,88 @@ export async function fetchRecords(){
     
   } catch (error) {
     console.error("Something went wrong fetching records", error);
+  }
+}
+
+export async function fetchRequestEditRecords(){
+  try {
+    const res = await pool.query<EditedRecord>(`
+      SELECT 
+        r.id AS "id",
+        r."recordId" AS "recordId",
+        r.ticket,
+        r."recordType",
+        r.name,
+        r.service,
+        r."subService",
+        r."recordNumber",
+        r.value,
+        r.counter,
+        r.shift,
+        r."attendantId",
+        r.status,
+        r."attendantComment",
+        r."createdAt" AS "editedRecordCreatedAt",
+        r."updatedAt" AS "editedRecordUpdatedAt",
+        u.id AS "userId",
+        u.name AS "userName",
+        u.email AS "userEmail",
+        u.image AS "userImage"
+      FROM "EditedRecord" r
+      JOIN "User" u ON r."attendantId" = u.id
+      `);
+      
+      const records = res.rows;
+
+      if (records.length > 0) {
+          return records;
+      }
+    
+  } catch (error) {
+    console.error("Something went wrong fetching requested edit records", error);
+  }
+}
+
+export async function fetchRequestEditRecordsByUser( id:string ){
+  try {
+    const res = await pool.query<EditedRecord>(`
+      SELECT 
+        r.id AS "id",
+        r."recordId" AS "recordId",
+        r.ticket,
+        r."recordType",
+        r.name,
+        r.service,
+        r."subService",
+        r."recordNumber",
+        r.value,
+        r.counter,
+        r.shift,
+        r."attendantId",
+        r.status,
+        r."attendantComment",
+        r."createdAt" AS "editedRecordCreatedAt",
+        r."updatedAt" AS "editedRecordUpdatedAt",
+        u.id AS "userId",
+        u.name AS "userName",
+        u.email AS "userEmail",
+        u.image AS "userImage",
+        s.id AS "supervisorId",
+        s.name AS "supervisorName"
+      FROM "EditedRecord" r
+      JOIN "User" u ON r."attendantId" = u.id
+      LEFT JOIN "User" s ON r."supervisorId" = s.id
+      WHERE u.id = $1;
+      `,[id]);
+      
+      const records = res.rows;
+
+      if (records.length > 0) {
+          return records;
+      }
+    
+  } catch (error) {
+    console.error("Something went wrong fetching requested edit records", error);
   }
 }
 
@@ -508,8 +955,6 @@ export async function fetchDailyRevenueByAttendant(id:string) {
   }
 }
 
-
-
 export async function getRecord(id: string){
   const res = await pool.query<Record>(`
     SELECT * FROM "Record" WHERE id = $1`,[id]);
@@ -517,20 +962,5 @@ export async function getRecord(id: string){
     if (records.length > 0){
       return records[0];
     }
-}
-
-
-
-
-
-export async function fetchRevenue(){}
-export async function fetchLatestInvoices(){}
-export async function fetchCardData(){
-  const numberOfInvoices = 78;
-  const  numberOfCustomers = 4;
-  const totalPaidInvoices = 8;
-  const totalPendingInvoices = 9;
-
-  return {numberOfInvoices, numberOfCustomers, totalPaidInvoices, totalPendingInvoices};
 }
 

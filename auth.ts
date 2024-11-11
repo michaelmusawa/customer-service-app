@@ -30,9 +30,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const user = await getUser(email);
           if (!user) return null;
           const passwordsMatch = await bcrypt.compare(password, user.password);
-          if (passwordsMatch) 
+          if (passwordsMatch) {
+            const session = await prisma.session.create({
+              data: {
+                userId: user.id,
+                sessionToken: `token-${Date.now()}`, // Generate or use a JWT here if needed
+                expires: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24-hour expiration
+              },
+            });
+            console.log('Session created:', session);
             return { ...user, role: user.role }
         }
+      }
  
         console.log('Invalid credentials');
         return null;

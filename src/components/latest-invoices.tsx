@@ -15,7 +15,7 @@ export default async function LatestInvoices({records}:{records:Record[] | undef
       <div className="flex grow flex-col justify-between rounded-xl bg-gray-50 p-4">
 
         <div className="bg-white px-2">
-          {records ? records.slice(0,8).map((record, index) => {
+          {records ? records.slice(0,5).map((record, index) => {
             return (
               <div
                 key={record.id}

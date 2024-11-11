@@ -2,15 +2,15 @@ import Link from 'next/link';
 import NavLinks from './nav-links';
 import Logo from './logo';
 import SignOutIcon from './icons/SignOutIcon';
-import { auth, signOut } from '../../auth';
-import { redirect } from 'next/navigation';
-import { getUserById } from '@/app/lib/action';
+import { auth } from '../../auth';
+import { getUserById, signUserOut } from '@/app/lib/action';
 import bcrypt from 'bcrypt';
 
 
 export default async function SideNav() {
 
   const session = await auth();
+  console.log(session)
 
   let user;
   if (session){
@@ -21,6 +21,8 @@ export default async function SideNav() {
   if (user) {
     passwordsMatch = await bcrypt.compare(user.email, user.password);
   }
+
+
 
   
   return (
@@ -40,11 +42,7 @@ export default async function SideNav() {
         <div className="hidden h-auto w-full grow rounded-md  md:block">
         </div>
         <form
-          action={async () => {
-            'use server';
-            await signOut();
-            redirect('/');
-          }}
+          action={signUserOut}
         >
           <button className="flex h-[48px] max-sm:h-[30px] max-w-44 shadow-md grow items-center justify-center gap-2 rounded-md bg-gray-100 p-3 text-sm font-medium hover:bg-green-100 hover:text-green-600 hover:shadow-black/20 md:flex-none md:p-2 md:px-3 md:fixed md:bottom-24">
             <SignOutIcon className="w-6" />

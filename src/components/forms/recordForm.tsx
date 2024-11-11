@@ -1,6 +1,6 @@
 'use client'
 
-import { createRecord, editRecord } from "@/app/lib/action";
+import { createRecord, editRecord, requestEditRecord } from "@/app/lib/action";
 import { RecordState } from "@/app/lib/definitions";
 import { useFormState, useFormStatus } from "react-dom";
 import { Record } from "@/app/lib/definitions";
@@ -17,9 +17,9 @@ function SubmitButton ({editedRecord}: { editedRecord: Record | undefined }){
  
   <button type="submit" disabled={pending}>
   {pending ? (
-    editedRecord? "Updating..." : "Adding..."
+    editedRecord? "Sending..." : "Adding..."
   ) : (
-    editedRecord ? "Update" : "Add"
+    editedRecord ? "Send request" : "Add"
   )}
   </button>
     
@@ -29,13 +29,13 @@ function SubmitButton ({editedRecord}: { editedRecord: Record | undefined }){
 export default function RecordForm({shift, userId, role, record}:{role:string, userId: string, shift: string, record: Record | undefined}) {
 
   const {counter} = useContext(CounterContext);
+  const [recordType, setRecordType] = useState<string | null>(null);
  
   const initialState: RecordState = { message: null, state_error: null, errors: {} };
   const [state, formAction] = useFormState(createRecord, initialState);
 
-  const editRecordById = editRecord.bind(null,record?.id || '');
-    const [editState, editFormAction] = useFormState(editRecordById, initialState);
-
+  const editFormState: RecordState = { message: null, state_error: null, errors: {} };
+  const [editState, requestEditFormAction] = useFormState(requestEditRecord, editFormState);
  
 
   if (state?.message) {
@@ -61,7 +61,7 @@ export default function RecordForm({shift, userId, role, record}:{role:string, u
     <>
 
     {record ? (
-      <form  action={editFormAction} className="space-y-4 max-w-xl mx-auto">
+      <form  action={requestEditFormAction} className="space-y-4 max-w-xl mx-auto">
         <FormInputs />
     </form>
     ):(
@@ -74,7 +74,7 @@ export default function RecordForm({shift, userId, role, record}:{role:string, u
 
   function FormInputs(){
     const [ service, setService ] = useState<string>('Daily parking')
-  const [ subServices, setSubServices ] = useState<string[]>(Services[0].subServices)
+    const [ subServices, setSubServices ] = useState<string[]>(Services[0].subServices)
 
   function handleServiceChange(selectedService:string){
     const service = Services.find((service) => service.name === selectedService);
@@ -85,7 +85,22 @@ export default function RecordForm({shift, userId, role, record}:{role:string, u
   }
     return(
       <>
+      { record ? (
+         <h1 className="text-gray-700 font-semibold flex grow justify-center">Request to edit record form</h1>
+      ):(
+        <h1 className="text-gray-700 font-semibold flex grow justify-center">Add record form</h1>
+      )}
+     
       <div>
+        {record && (
+          <input
+            type="hidden"
+            name="recordId"
+            defaultValue={record.id}
+            className="border p-2 rounded w-full"
+            required
+          />
+        )}
     <input
         type="hidden"
         name="shift"
@@ -107,6 +122,36 @@ export default function RecordForm({shift, userId, role, record}:{role:string, u
         className="border p-2 rounded w-full"
         required
       />
+     
+     <fieldset className="flex justify-evenly border p-2 rounded w-full mb-2">
+        <legend>Record type:</legend>
+        <div>
+          <input
+            type="radio"
+            name="recordType"
+            value="receipt"
+            className="mx-2"
+            checked={recordType === 'receipt'}
+            onChange={(e) => setRecordType(e.target.value)}
+          />
+          <label>Receipt</label>
+        </div>
+        <div>
+          <input
+            type="radio"
+            name="recordType"
+            value="invoice"
+            className="mx-2"
+            checked={recordType === 'invoice'}
+            onChange={(e) => setRecordType(e.target.value)}
+          />
+          <label>Invoice</label>
+        </div>
+      </fieldset>
+       
+        
+      
+
       <label className="block text-sm font-medium">Ticket Number</label>
       <input
         type="text"
@@ -155,14 +200,35 @@ export default function RecordForm({shift, userId, role, record}:{role:string, u
       </div>
     
     <div>
-      <label className="block text-sm font-medium">Invoice Number</label>
-      <input
-        type="text"
-        name="invoice"
-        defaultValue={record?.invoice || ''}
-        className="border p-2 rounded w-full"
-        required
-      />
+    {recordType ? (
+  <>
+    <label className="block text-sm font-medium">
+      {recordType === 'invoice' ? 'Invoice Number' : 'Receipt Number'}
+    </label>
+    <input
+      type="text"
+      name="recordNumber"
+      defaultValue={record?.ticket || ''}
+      className="border p-2 rounded w-full"
+      required
+    />
+  </>
+) : (
+  <>
+    <label className="block text-sm text-red-800 font-medium">
+      Please choose a record type
+    </label>
+    <input
+      type="text"
+      name="recordNumber"
+      defaultValue={record?.ticket || ''}
+      className="border p-2 rounded w-full"
+      required
+      disabled
+    />
+  </>
+)}
+
     </div>
     <div>
       <label className="block text-sm font-medium">Value</label>
@@ -174,6 +240,19 @@ export default function RecordForm({shift, userId, role, record}:{role:string, u
         required
       />
     </div>
+    { record && (
+       <div>
+       <label className="block text-sm font-medium">Reason for edit:</label>
+       <textarea        
+         name="attendantComment"
+         rows={4}
+         cols={2}
+         className="border p-2 rounded w-full"
+         required
+       />
+     </div>
+    )}
+   
    
     <div className="pb-2 flex gap-2">
         <SubmitButton editedRecord={record}/>

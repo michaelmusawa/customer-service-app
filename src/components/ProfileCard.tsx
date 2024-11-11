@@ -1,8 +1,25 @@
+'use client'
+
 import { User } from "@/app/lib/definitions"
 import Image from "next/image"
 import Link from "next/link"
+import toast from "react-hot-toast"
 
-export default function ProfileCard({user, type}:{user: User | undefined , type: string}) {
+export default function ProfileCard({
+  user, 
+  type, 
+  success
+}:{
+  user: User | undefined, 
+  type: string, 
+  success: string | undefined
+}) {
+
+ 
+  if(success === 'true') {
+    toast.success('Profile edited successfully');
+  }
+
   return (
     <div><div className="max-w-sm mx-auto mt-10">
     <div className="bg-gray-50 shadow-md rounded-lg p-6">

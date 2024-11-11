@@ -15,7 +15,7 @@ export default function DeleteButton({
     if (showConfirm) {
 
         return (
-            <div className="fixed bg-black/60 inset-0 flex items-center h-full w-full justify-center" style={{ pointerEvents: 'auto' }}>
+            <div className="fixed bg-black/60 blur-md inset-0 flex items-center h-full w-full justify-center" style={{ pointerEvents: 'auto' }}>
                 <div className="items-center bg-white h-40 w-72 p-4 rounded-lg">
                     <p className="text-center mt-4 text-gray-700">Are you sure you want to <br/> 
                         <span className="text-red-500 font-semibold">delete?</span></p>

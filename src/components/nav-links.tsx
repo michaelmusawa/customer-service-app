@@ -7,22 +7,21 @@ import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
 import RecordIcon from "./icons/recordIcon";
 import ProfileIcon from "./icons/profileIcon";
+import NotificationIcon from "./icons/Notification";
 
-const links = [
-  { name: 'Home', href: '/dashboard', icon: <HomeIcon />, role: ['attendant','supervisor','admin']}, 
-  { name: 'Profile', href: '/dashboard/admin/profile', icon: <ProfileIcon />, role: ['admin']},
-  { name: 'Profile', href: '/dashboard/supervisor/profile', icon: <ProfileIcon />, role: ['supervisor']},
-  { name: 'Profile', href: '/dashboard/attendant/profile', icon: <ProfileIcon />, role: ['attendant']},
-  { name: 'Records', href: '/dashboard/attendant/records', icon: <RecordIcon />, role: ['attendant']},
-  { name: 'Records', href: '/dashboard/supervisor/records', icon: <RecordIcon />, role: ['supervisor']},
-  { name: 'Records', href: '/dashboard/admin/records', icon: <RecordIcon />, role: ['admin']},
-  {name: 'Supervisors', href: '/dashboard/admin/supervisors/create', icon: <UserGroupIcon />, role: ['admin']},
-  {name: 'Attendants', href: '/dashboard/admin/attendants/create', icon: <UserGroupIcon  />, role: ['admin']},
-  {name: 'Attendants', href: '/dashboard/supervisor/attendants/create', icon: <UserGroupIcon  />, role: ['supervisor']}
-
-];
 
 export default function NavLinks({ role }: { role: string }) {
+
+  const links = [
+    { name: 'Home', href: '/dashboard', icon: <HomeIcon />, role: ['attendant','supervisor','admin']}, 
+    { name: 'Profile', href: `/dashboard/${role}/profile`, icon: <ProfileIcon />, role: ['attendant','supervisor','admin']},
+    { name: 'Records', href: `/dashboard/${role}/records`, icon: <RecordIcon />, role: ['attendant','supervisor']},
+    {name: 'Supervisors', href: `/dashboard/${role}/supervisors/create`, icon: <UserGroupIcon />, role: ['admin']},
+    {name: 'Attendants', href: `/dashboard/${role}/attendants/create`, icon: <UserGroupIcon  />, role: ['supervisor']},
+    { name: 'Notification', href: `/dashboard/${role}/notification`, icon: <NotificationIcon />, role: ['attendant','supervisor','admin']},
+  
+  ];
+  
   const pathname = usePathname();
 
   return (

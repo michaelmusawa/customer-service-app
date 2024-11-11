@@ -15,35 +15,71 @@ datasource db {
 
 
 model User {
-  id            String          @id @default(cuid())
-  name          String?
-  email         String          @unique
-  password      String
-  emailVerified DateTime?
-  role          String?
-  image         String?
-  records        Record[]
-  accounts      Account[]
-  sessions      Session[] 
-  createdAt DateTime @default(now())
-  updatedAt DateTime? @updatedAt
+  id              String          @id @default(cuid())
+  name            String?
+  email           String          @unique
+  password        String
+  emailVerified   DateTime?
+  role            String?
+  status          String?
+  image           String?
+  counter         Int?
+  shift           String?
+  shiftStartDate  DateTime?
+  shiftEndDate    DateTime?
+  records         Record[]
+  editRecordsAsAttendant EditedRecord[] @relation("AttendantRelation")
+  editRecordsAsSupervisor EditedRecord[] @relation("SupervisorRelation")
+  attendantNotification ShiftNotification[] @relation("AttendantNotificationRelation")
+  supervisorNotification ShiftNotification[] @relation("SupervisorNotificationRelation")
+  accounts        Account[]
+  sessions        Session[] 
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime? @updatedAt
 }
 
 model Record {
-  id            String          @id @default(cuid())
-  ticket        String
-  name          String
-  service         String  
-  subService         String?        
-  invoice      String
-  value        Int
-  counter          String
+  id             String          @id @default(cuid())
+  ticket         String
+  recordType String?
+  name           String
+  service        String  
+  subService     String?        
+  recordNumber   String?
+  value          Int
+  counter        String
   shift          String
   userId         String
+  editRecords    EditedRecord[]
   user           User @relation(fields: [userId], references: [id])   
-  createdAt DateTime @default(now())
-  updatedAt DateTime? @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime? @updatedAt
 }
+
+model EditedRecord {
+  id            String          @id @default(cuid())
+  recordId      String 
+  record        Record @relation(fields: [recordId], references: [id])
+  ticket        String
+  recordType String?
+  name          String
+  service       String  
+  subService    String?        
+  recordNumber       String
+  value         Int
+  counter       String
+  shift         String
+  attendantComment       String?
+  supervisorComment       String?
+  status        String
+  attendantId   String
+  supervisorId  String?
+  attendant     User @relation("AttendantRelation", fields: [attendantId], references: [id])
+  supervisor    User? @relation("SupervisorRelation", fields: [supervisorId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime? @updatedAt
+}
+
 
  
 model Account {
@@ -75,6 +111,18 @@ model Session {
  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ShiftNotification {
+  id       String   @unique
+  expires      DateTime
+  attendantId   String
+  supervisorId  String?
+  attendant     User @relation("AttendantNotificationRelation", fields: [attendantId], references: [id])
+  supervisor    User? @relation("SupervisorNotificationRelation", fields: [supervisorId], references: [id])
+  dismiss       String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
 }
  
 model VerificationToken {

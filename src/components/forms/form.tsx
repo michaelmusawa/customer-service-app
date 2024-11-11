@@ -29,7 +29,10 @@ export default function UserForm({ user, type, label, loggedInUser }: { loggedIn
 
   return (
     <div className="gap-2 items-end">
-      <h2 className="mt-8 text-sm text-gray-500">{label}</h2>
+      <div className="flex grow items-center justify-center mb-4">
+        <h2 className="text-gray-500">{label}</h2>
+      </div>
+      
           <div className="grow">
           <input type="hidden" 
                   id="name"

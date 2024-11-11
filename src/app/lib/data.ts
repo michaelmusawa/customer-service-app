@@ -17,3 +17,31 @@ export const Services: Service[] = [
     { name: 'Land Use Planning ', subServices:['Land Subdivision','Change of Use','Land Amalgamation','Extension/renewal of lease'] },
     { name: 'Development Control', subServices:['Building Permits','Construction Site Board','Building Occupation Certificate','Renovation Permit'] },
 ];
+
+export function FormatDate({ date }: { date: Date }) {
+  const goodDate = new Date(date);
+  const recordDate = goodDate.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: true,
+    timeZone: 'UTC',
+  });
+  return (recordDate);
+}
+
+
+export function getCurrentTimeFormatted() {
+  const currentTime = new Date();
+  let hours = currentTime.getHours();
+  const minutes = currentTime.getMinutes().toString().padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  
+  // Convert from 24-hour to 12-hour format
+  hours = hours % 12;
+  hours = hours ? hours : 12; // If hours is 0, make it 12 (for 12 AM/PM)
+  
+  return `${hours}:${minutes} ${ampm}`;
+}

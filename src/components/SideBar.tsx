@@ -10,8 +10,7 @@ import bcrypt from 'bcrypt';
 export default async function SideNav() {
 
   const session = await auth();
-  console.log(session)
-
+ 
   let user;
   if (session){
     user = await getUserById(session.user.id);
@@ -22,9 +21,6 @@ export default async function SideNav() {
     passwordsMatch = await bcrypt.compare(user.email, user.password);
   }
 
-
-
-  
   return (
     <div className="flex flex-col px-3 py-4 md:px-2 sm">
       <Link

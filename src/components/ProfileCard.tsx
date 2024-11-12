@@ -3,6 +3,7 @@
 import { User } from "@/app/lib/definitions"
 import Image from "next/image"
 import Link from "next/link"
+import { useEffect } from "react"
 import toast from "react-hot-toast"
 
 export default function ProfileCard({
@@ -16,19 +17,22 @@ export default function ProfileCard({
 }) {
 
  
-  if(success === 'true') {
-    toast.success('Profile edited successfully');
-  }
+  useEffect(() => {
+    if (success === 'true') {
+      toast.success('Profile edited successfully');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [success]);
 
   return (
-    <div><div className="max-w-sm mx-auto mt-10">
+    <div className="max-w-sm mx-auto mt-10">
     <div className="bg-gray-50 shadow-md rounded-lg p-6">
       <div className="flex flex-col items-center">
         <Image
-          src={user?.image || "/images/avator.jpg"} 
+          src={user?.image ?? "/images/avator.jpg"} 
           width={100}
           height={100}
-          alt=""
+          alt="profile"
           className="w-36 h-36 rounded-full mb-8 bg-gray-50"
         />
         <h1 className="text-2xl font-semibold mb-8">{user?.name}</h1>
@@ -39,6 +43,6 @@ export default function ProfileCard({
         </Link>
       </div>
     </div>
-  </div></div>
+  </div>
   )
 }

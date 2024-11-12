@@ -14,22 +14,24 @@ export default async function page({ params, searchParams }: { params: Params, s
   const { role } = params;
   const success = searchParams.success as string | undefined;
 
- 
-
   if (!session){
     return redirect('/login');
+
   } else if (session?.user.role !== role){
+
     return(
       <div>
         <h1>You are not authorized to visit this page!</h1>
         <Link
-        className="button" 
-          href='/login'>
+          className="button" 
+          href='/login'
+        >
           Go to Login
         </Link>
       </div>
     )
   }
+
   const user = await getUser(session.user.email || '')
   
   return (

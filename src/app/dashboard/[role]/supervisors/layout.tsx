@@ -1,7 +1,6 @@
 
 import { redirect } from 'next/navigation';
 import { auth } from '../../../../../auth';
-import Users from '../_components/users';
 import Link from 'next/link';
 
 export default async function Layout({ 
@@ -29,15 +28,11 @@ export default async function Layout({
       </div>
     ) 
   }
-  
-  const loggedInUser = session.user.role
-    
 
   return (
     <div>
         <div className='max-w-2xl mx-auto mb-4'>
             {children}
-            <Users type={'supervisor'} loggedInUser={loggedInUser}/>
         </div>
   </div>
   )

@@ -10,6 +10,7 @@ import clsx from 'clsx';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 
 
 export default function UsersTable({
@@ -17,12 +18,14 @@ export default function UsersTable({
   onlineUsers,
   type, 
   loggedInUser,
+  archive
   
   }:{
     loggedInUser:string, 
     type: string, 
     onlineUsers: OnlineUser[] | undefined, 
     users:User[] | undefined,
+    archive: string | undefined;
    
   }) {
 
@@ -43,6 +46,7 @@ export default function UsersTable({
       endDate: new Date(),
     });
     const [ showArchiveModel, setShowArchiveModel] = useState<boolean>(false);
+    const [ userArchivedId, setUserArchivedId] = useState<string>('');
     const [ showShiftAndCounterModel, setShowShiftAndCounterModel] = useState<boolean>(false);
     const [ editShiftAndCounter, setEditShiftAndCounter ] = useState<boolean>(false);
     const [ editShiftAndCounterId, setEditShiftAndCounterId ] = useState<string>('');
@@ -58,6 +62,13 @@ export default function UsersTable({
         setEditShiftAndCounterId(id);
       }
     }, [id]); 
+
+    useEffect(() => {
+      if (archive === 'true'){
+        setShowArchiveModel(false);
+        toast.success('Archive successfully')
+      }
+    },[archive]);
  
     if (view === 'active' || view === 'shift & counter') {
       viewUsers = users?.filter((user) => user.status === null);
@@ -86,18 +97,24 @@ export default function UsersTable({
                 Edit
               </Link>
 
-              {showArchiveModel ? (
+              {(showArchiveModel && userArchivedId) ? (
                 <ArchiveModel 
-                  userId={userId} 
-                  role='attendant' 
+                  userId={userArchivedId}
+                  role={type} 
                   status='archive' 
                   setShowArchiveModel={setShowArchiveModel}
+                  setUserArchivedId={setUserArchivedId}
                 />
               ):(
                 <div>
                   <button
                     className="block border-0 px-1 py-1 text-sm text-gray-700 hover:bg-gray-100" 
-                    onClick={() => setShowArchiveModel(true)}>Archive
+                    onClick={() => {
+                      setShowArchiveModel(true),
+                      setUserArchivedId(userId)
+                    }}
+                  >
+                    Archive
                   </button>
                 </div>
               )}               
@@ -120,7 +137,10 @@ export default function UsersTable({
                     {
                       'bg-green-100 text-green-800': view === 'active'
                     }
-                    )}>Active</button>
+                    )}
+                    >
+                      Active
+                    </button>
               </li>
               <li>
                 <button 
@@ -308,7 +328,7 @@ export default function UsersTable({
                               counter = {shiftAndCounter.counter} 
                               shift = {shiftAndCounter.shift}
                               startDate={shiftAndCounter.startDate}
-                              role={'attendant'}
+                              role={type}
                               endDate={shiftAndCounter.endDate}
                               setShowShiftAndCounterModel={setShowShiftAndCounterModel}
                             />
@@ -338,17 +358,22 @@ export default function UsersTable({
                         )
                       ) : (
                         view === 'archive' ? (
-                          showArchiveModel ? (
+                          (showArchiveModel && userArchivedId) ? (
                             <ArchiveModel 
-                              userId={user.id} 
-                              role='attendant' 
+                              userId={userArchivedId} 
+                              role={type} 
                               status='activate' 
                               setShowArchiveModel={setShowArchiveModel}
+                              setUserArchivedId={setUserArchivedId}
                             />
                           ):(
                             <button
-                              onClick={() => setShowArchiveModel(true)}
-                              className='!border-0 py-2 px-4 text-md bg-gray-50 hover:cursor-pointer hover:bg-green-100'>
+                              onClick={() => {
+                                setShowArchiveModel(true),
+                                setUserArchivedId(user.id)
+                              }}
+                              className='!border-0 py-2 px-4 text-md bg-gray-50 hover:cursor-pointer hover:bg-green-100'
+                            >
                               Activate
                           </button>
                           )

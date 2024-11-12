@@ -4,10 +4,12 @@ import UsersTable from './usersTable'
 
 
 export default async function Users({
+  archive,
   type, 
   loggedInUser,
 
 }:{
+  archive: string | undefined,
   loggedInUser:string, 
   type:string,
   
@@ -21,15 +23,13 @@ export default async function Users({
     users = await fetchUsers('supervisor')
   }
 
-  
-
   return (
     <UsersTable 
       type={type} 
       users={users} 
       onlineUsers = {sessionUsers}
       loggedInUser={loggedInUser}
-     
+      archive = {archive}
      />
     
   )

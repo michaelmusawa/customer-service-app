@@ -3,20 +3,25 @@
 import { createUser } from '@/app/lib/action';
 import { UserState } from '@/app/lib/definitions';
 import UserForm from '@/components/forms/form';
-import React, { useRef } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { useFormState } from 'react-dom';
 import toast from 'react-hot-toast';
 
-export default function CreateUserPage({type, loggedInUser}:{loggedInUser:string, type:string}) {
+export default function CreateUserPage({type, success, loggedInUser}:{loggedInUser:string, success:string | undefined, type:string}) {
   
     const initialState: UserState = { response: null, message: null, state_error: null, errors: {} };
     const [state, formAction] = useFormState(createUser, initialState);
 
-    const formRef = useRef<HTMLFormElement>(null)
+    const formRef = useRef<HTMLFormElement>(null);
 
-    console.log("the form state ", formRef.current)
+    useEffect(() => {
+      if (success === 'true') {
+        toast.success('User edited successfully');
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }, [success]);
 
-    if (state?.message) {
+     if (state?.message) {
         if (state?.response === 'ok') {
           formRef.current?.reset()
           toast.success(state.message);

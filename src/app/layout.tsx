@@ -21,7 +21,7 @@ export default function RootLayout({
   
   return (
     <html lang="en">
-       <body className={`${inter.className} antialiased relative`}>
+       <body className={`${inter.variable} antialiased relative`}>
         <Toaster />
           <div className="h-14 w-auto flex justify-between grow">
             <Image 

@@ -79,7 +79,9 @@ export async function fetchUsers(user:string){
     const res = await pool.query<User>(`
       SELECT * FROM "User"
       WHERE role = $1
-      `,[user])
+      ORDER BY "createdAt" DESC
+      `,[user]);
+
       const users = res.rows
       if (users.length > 0){
         return users
@@ -160,8 +162,7 @@ export async function createUser( prevState: UserState, formData: FormData ) {
           return (
             { 
               message: `Added ${role} successfully`,
-              response:'ok',
-              state_error: `Something went wrong! Failed to create ${role}.`,
+              response:'ok'
             }
           );  
 
@@ -295,7 +296,7 @@ export async function editUser( id: string, prevState: UserState, formData: Form
   }
   
   revalidatePath(`/dashboard/${session?.user.role}/${role}s/create`);
-  redirect(`/dashboard/${session?.user.role}/${role}s/create`)
+  redirect(`/dashboard/${session?.user.role}/${role}s/create?success=true`)
 } 
 
 const ArchiveUserSchema = z.object ({
@@ -337,27 +338,17 @@ export async function archiveUser( id: string, prevState: UserState, formData: F
         status = $1
         WHERE id = $2
         `,[userStatus, id]);  
-        
-        revalidatePath(`/dashboard/${session?.user.role}/${role}s/create`);
-        return(
-          {
-          message: 'Status updated successfully',
-          response: 'ok'
-          }
-          )
- 
+         
   } catch (error) {
     console.error("Something went wrong achieving user",error);
-    return(
-      {
-      state_error: 'Error achieving user',
+    return({
+      state_error: 'Error archiving user',
       response: '!ok'
-    }
-  );
+    });
     
   };
   
-  
+  redirect(`/dashboard/${session?.user.role}/${role}s/create?archived=true`);
 } 
 
 const ShiftAndCounterUserSchema = z.object ({
@@ -483,6 +474,7 @@ export async function getUser(email: string): Promise<User | undefined> {
     const res = await pool.query<User>(`
       SELECT * FROM "User" 
       WHERE email='${email}'
+      ORDER BY "createdAt" DESC
       `);
     return res.rows[0];
 
@@ -742,7 +734,6 @@ export async function editRequestEditRecord(id: string, prevState: RecordState, 
   redirect(`/dashboard/${session?.user.role}/notification`);
 } 
 
-
 export async function deleteRecord(id: string){
   try {
     await pool.query(`
@@ -786,6 +777,7 @@ export async function fetchRecordsByAttendant(userId:string){
       FROM "Record" r
       JOIN "User" u ON r."userId" = u.id
       WHERE r."userId" = $1
+      ORDER BY "createdAt" DESC
     `, [userId]);
       const records = res.rows
       if (records.length > 0){
@@ -824,6 +816,7 @@ export async function fetchRecords(){
         SUM(CASE WHEN r."recordType" = 'receipt' THEN r.value ELSE 0 END) OVER () AS "receiptTotal"
       FROM "Record" r
       JOIN "User" u ON r."userId" = u.id
+      ORDER BY "createdAt" DESC
       `);
       
       const records = res.rows;
@@ -905,7 +898,8 @@ export async function fetchRequestEditRecordsByUser( id:string ){
       FROM "EditedRecord" r
       JOIN "User" u ON r."attendantId" = u.id
       LEFT JOIN "User" s ON r."supervisorId" = s.id
-      WHERE u.id = $1;
+      WHERE u.id = $1
+      ORDER BY "createdAt" DESC
       `,[id]);
       
       const records = res.rows;

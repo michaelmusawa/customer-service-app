@@ -37,13 +37,13 @@ export default async function Notifications({ params }: { params: { role: string
 
 
     return (
-    <NotificationPage 
-          editRequests={editRequests} 
-          records={records} 
-          sessionUserId = {session.user.id}
-          attendants = {attendants}
-          role = {role}
-        />
-  )
+      <NotificationPage 
+        editRequests={editRequests} 
+        records={records} 
+        sessionUserId = {session.user.id}
+        attendants = {attendants}
+        role = {role}
+      />
+    )
     
 }

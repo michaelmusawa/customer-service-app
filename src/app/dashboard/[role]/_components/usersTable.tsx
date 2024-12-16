@@ -1,210 +1,240 @@
-'use client'
+"use client";
 
-
-import { FormatDate } from '@/app/lib/data';
-import { OnlineUser, User } from '@/app/lib/definitions';
-import ArchiveModel from '@/components/ArchiveModel';
-import EllipsisIcon from '@/components/icons/ellipsisIcon';
-import ShiftAndCounterModel from '@/components/ShiftAndCounterModel';
-import clsx from 'clsx';
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import toast from 'react-hot-toast';
-
+import { FormatDate } from "@/app/lib/data";
+import { OnlineUser, User } from "@/app/lib/definitions";
+import ArchiveModel from "@/components/ArchiveModel";
+import EllipsisIcon from "@/components/icons/ellipsisIcon";
+import ShiftAndCounterModel from "@/components/ShiftAndCounterModel";
+import clsx from "clsx";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 
 export default function UsersTable({
   users,
   onlineUsers,
-  type, 
+  type,
   loggedInUser,
-  archive
-  
-  }:{
-    loggedInUser:string, 
-    type: string, 
-    onlineUsers: OnlineUser[] | undefined, 
-    users:User[] | undefined,
-    archive: string | undefined;
-   
-  }) {
+}: {
+  loggedInUser: string;
+  type: string;
+  onlineUsers: OnlineUser[] | undefined;
+  users: User[] | undefined;
+}) {
+  interface ShiftAndCounter {
+    userId: string;
+    shift: string;
+    counter: number;
+    startDate: Date;
+    endDate: Date;
+  }
 
-    interface ShiftAndCounter {
-      userId:string,
-      shift: string,
-      counter: number,
-      startDate: Date,
-      endDate: Date
+  const [view, setView] = useState<string>("active");
+  const [shiftAndCounter, setShiftAndCounter] = useState<ShiftAndCounter>({
+    userId: "",
+    shift: "morning",
+    counter: 1,
+    startDate: new Date(),
+    endDate: new Date(),
+  });
+  const [showArchiveModel, setShowArchiveModel] = useState<boolean>(false);
+  const [userArchivedId, setUserArchivedId] = useState<string>("");
+  const [showShiftAndCounterModel, setShowShiftAndCounterModel] =
+    useState<boolean>(false);
+  const [editShiftAndCounter, setEditShiftAndCounter] =
+    useState<boolean>(false);
+  const [editShiftAndCounterId, setEditShiftAndCounterId] =
+    useState<string>("");
+
+  const searchParams = useSearchParams();
+  const id = searchParams.get("id");
+  const archive = searchParams.get("archive");
+  const activate = searchParams.get("activate");
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 7;
+
+  let totalPages = 0;
+
+  let viewUsers: User[] | undefined = [];
+  useEffect(() => {
+    if (id) {
+      setView("shift & counter");
+      setEditShiftAndCounter(true);
+      setEditShiftAndCounterId(id);
     }
-  
-    const [ view, setView ] = useState<string>('active');
-    const [shiftAndCounter, setShiftAndCounter] = useState<ShiftAndCounter>({
-      userId:'',
-      shift: '',
-      counter: 0,
-      startDate: new Date(),
-      endDate: new Date(),
-    });
-    const [ showArchiveModel, setShowArchiveModel] = useState<boolean>(false);
-    const [ userArchivedId, setUserArchivedId] = useState<string>('');
-    const [ showShiftAndCounterModel, setShowShiftAndCounterModel] = useState<boolean>(false);
-    const [ editShiftAndCounter, setEditShiftAndCounter ] = useState<boolean>(false);
-    const [ editShiftAndCounterId, setEditShiftAndCounterId ] = useState<string>('');
+  }, [id]);
 
-    const searchParams = useSearchParams();
-    const id = searchParams.get('id');
+  useEffect(() => {
+    if (archive === "true") {
+      setShowArchiveModel(false);
+      toast.success("Archive successfully");
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (activate === "true") {
+      setShowArchiveModel(false);
+      toast.success("Activated successfully");
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [archive, activate]);
 
-    let viewUsers: User[] | undefined = [];
-    useEffect(() => {
-      if (id) {
-        setView('shift & counter');
-        setEditShiftAndCounter(true);
-        setEditShiftAndCounterId(id);
-      }
-    }, [id]); 
-
-    useEffect(() => {
-      if (archive === 'true'){
-        setShowArchiveModel(false);
-        toast.success('Archive successfully')
-      }
-    },[archive]);
- 
-    if (view === 'active' || view === 'shift & counter') {
-      viewUsers = users?.filter((user) => user.status === null);
-    } else if (view === 'archive') {
-      viewUsers = users?.filter((user) => user.status === 'archive');
-    } else if (view === 'online') {
-      viewUsers = users?.filter((user) => 
-        onlineUsers?.some((onlineUser) => onlineUser.userId === user.id)
-      );
-    } else if (view === 'offline') {
-      viewUsers = users?.filter((user) => 
+  if (view === "active" || view === "shift & counter") {
+    viewUsers = users?.filter((user) => user.status === null);
+  } else if (view === "archive") {
+    viewUsers = users?.filter((user) => user.status === "archive");
+  } else if (view === "online") {
+    viewUsers = users?.filter((user) =>
+      onlineUsers?.some((onlineUser) => onlineUser.userId === user.id)
+    );
+  } else if (view === "offline") {
+    viewUsers = users?.filter(
+      (user) =>
         !onlineUsers?.some((onlineUser) => onlineUser.userId === user.id)
-      );
-    } 
+    );
+  }
 
-    function ActionMenu({ userId }:{ userId:string }) {
-      
-      return (
-        <div className="relative group">
-          <EllipsisIcon />
-          <div className="hidden absolute px-2 -top-4 left-6 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 group-hover:block">
-            <div className="py-1">
-              <Link 
-                className="block px-1 py-1 text-sm text-gray-700 hover:bg-gray-100"
-                href={`/dashboard/${loggedInUser}/${type}s/${userId}/edit`} >
-                Edit
-              </Link>
+  // Calculate total pages
+  if (viewUsers) {
+    totalPages = Math.ceil(viewUsers.length / rowsPerPage);
+  }
 
-              {(showArchiveModel && userArchivedId) ? (
-                <ArchiveModel 
-                  userId={userArchivedId}
-                  role={type} 
-                  status='archive' 
-                  setShowArchiveModel={setShowArchiveModel}
-                  setUserArchivedId={setUserArchivedId}
-                />
-              ):(
-                <div>
-                  <button
-                    className="block border-0 px-1 py-1 text-sm text-gray-700 hover:bg-gray-100" 
-                    onClick={() => {
-                      setShowArchiveModel(true),
-                      setUserArchivedId(userId)
-                    }}
-                  >
-                    Archive
-                  </button>
-                </div>
-              )}               
-            </div>
+  // Get the current rows to display
+  const currentRows = viewUsers?.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage
+  );
+
+  function ActionMenu({ userId }: { userId: string }) {
+    return (
+      <div className="relative group">
+        <EllipsisIcon />
+        <div className="hidden absolute px-2 -top-4 left-6 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 group-hover:block">
+          <div className="py-1">
+            <Link
+              className="block px-1 py-1 text-sm text-gray-700 hover:bg-gray-100"
+              href={`/dashboard/${loggedInUser}/${type}s/${userId}/edit`}
+            >
+              Edit
+            </Link>
+
+            {showArchiveModel && userArchivedId ? (
+              <ArchiveModel
+                userId={userArchivedId}
+                role={type}
+                status="archive"
+                setShowArchiveModel={setShowArchiveModel}
+                setUserArchivedId={setUserArchivedId}
+              />
+            ) : (
+              <div>
+                <button
+                  className="block border-0 px-1 py-1 text-sm text-gray-700 hover:bg-gray-100"
+                  onClick={() => {
+                    setShowArchiveModel(true), setUserArchivedId(userId);
+                  }}
+                >
+                  Archive
+                </button>
+              </div>
+            )}
           </div>
         </div>
-      );
-    }
-  
+      </div>
+    );
+  }
+
   return (
     <div>
-        <div>
-          <div className='flex grow items-center border bg-gray-100 rounded-lg mt-8'>
-            <ul className='flex w-full justify-evenly'>
+      <div>
+        <div className="flex grow items-center border bg-gray-100 rounded-lg mt-8">
+          <ul className="flex w-full justify-evenly">
             <li>
-                <button 
-                  onClick={() => {setView('active')}}
-                  className={clsx(
-                    '!border-0 py-2 px-4 text-md bg-gray-50 hover:cursor-pointer hover:bg-green-100',
-                    {
-                      'bg-green-100 text-green-800': view === 'active'
-                    }
-                    )}
-                    >
-                      Active
-                    </button>
-              </li>
+              <button
+                onClick={() => {
+                  setView("active");
+                }}
+                className={clsx(
+                  "!border-0 py-2 px-4 text-md bg-gray-50 hover:cursor-pointer hover:bg-green-100",
+                  {
+                    "bg-green-100 text-green-800": view === "active",
+                  }
+                )}
+              >
+                Active
+              </button>
+            </li>
+            <li>
+              <button
+                onClick={() => setView("archive")}
+                className={clsx(
+                  "!border-0 py-2 px-4 text-md bg-gray-50 hover:cursor-pointer hover:bg-green-100",
+                  {
+                    "bg-green-100 text-green-800": view === "archive",
+                  }
+                )}
+              >
+                Archive
+              </button>
+            </li>
+            <li>
+              <button
+                onClick={() => setView("online")}
+                className={clsx(
+                  "!border-0 py-2 px-4 text-md bg-gray-50 hover:cursor-pointer hover:bg-green-100",
+                  {
+                    "bg-green-100 text-green-800": view === "online",
+                  }
+                )}
+              >
+                Online
+              </button>
+            </li>
+
+            <li>
+              <button
+                onClick={() => setView("offline")}
+                className={clsx(
+                  "!border-0 py-2 px-4 text-md bg-gray-50 hover:cursor-pointer hover:bg-green-100",
+                  {
+                    "bg-green-100 text-green-800": view === "offline",
+                  }
+                )}
+              >
+                Offline
+              </button>
+            </li>
+            {loggedInUser === "supervisor" && (
               <li>
-                <button 
-                  onClick={() => setView('archive')}
+                <button
+                  onClick={() => setView("shift & counter")}
                   className={clsx(
-                    '!border-0 py-2 px-4 text-md bg-gray-50 hover:cursor-pointer hover:bg-green-100',
+                    "!border-0 py-2 px-4 text-md bg-gray-50 hover:cursor-pointer hover:bg-green-100",
                     {
-                      'bg-green-100 text-green-800': view === 'archive'
+                      "bg-green-100 text-green-800": view === "shift & counter",
                     }
-                    )}>Archive</button>
+                  )}
+                >
+                  Shift & counter
+                </button>
               </li>
-              <li>
-                <button 
-                  onClick={() => setView('online')}
-                  className={clsx(
-                    '!border-0 py-2 px-4 text-md bg-gray-50 hover:cursor-pointer hover:bg-green-100',
-                    {
-                      'bg-green-100 text-green-800': view === 'online'
-                    }
-                    )}>Online</button>
-              </li>
-              
-              <li>
-                <button 
-                  onClick={() => setView('offline')}
-                  className={clsx(
-                    '!border-0 py-2 px-4 text-md bg-gray-50 hover:cursor-pointer hover:bg-green-100',
-                    {
-                      'bg-green-100 text-green-800': view === 'offline'
-                    }
-                    )}>Offline</button>
-              </li>
-              {loggedInUser === 'supervisor' && (
-                <li>
-                   <button 
-                     onClick={() => setView('shift & counter')}
-                     className={clsx(
-                       '!border-0 py-2 px-4 text-md bg-gray-50 hover:cursor-pointer hover:bg-green-100',
-                       {
-                         'bg-green-100 text-green-800': view === 'shift & counter'
-                       }
-                       )}>Shift & counter
-                    </button>
-                </li>
-              )}
-            
-            </ul>
-          </div>
-            <h2 className="mt-8 text-sm text-gray-500">{`Existing ${type}:`}</h2>
-            <div className='overflow-x-auto'>
-            <table className="min-w-full bg-white border border-gray-300  mx-auto">
-            <thead className='bg-green-100 text-green-800 max-lg:text-sm max-sm:text-xs'>
+            )}
+          </ul>
+        </div>
+        <h2 className="mt-8 text-sm text-gray-500">{`Existing ${type}:`}</h2>
+        <div className="overflow-x-auto">
+          <table className="min-w-full bg-white border border-gray-300  mx-auto">
+            <thead className="bg-green-100 text-green-800 max-lg:text-sm max-sm:text-xs">
               <tr>
                 <th className="border px-4 py-2">No.</th>
                 <th className="border px-4 py-2">Name</th>
                 <th className="border px-4 py-2">Email</th>
-                {(view === 'active' || view === 'archive') && (
+                {(view === "active" || view === "archive") && (
                   <th className="border px-4 py-2">Account status</th>
                 )}
-                {(view === 'online' || view === 'offline') && (
+                {(view === "online" || view === "offline") && (
                   <th className="border px-4 py-2">Online status</th>
-                )}               
-                
-                {view === 'shift & counter' && (
+                )}
+
+                {view === "shift & counter" && (
                   <>
                     <th className="border px-4 py-2">Shift</th>
                     <th className="border px-4 py-2">Counter</th>
@@ -216,183 +246,232 @@ export default function UsersTable({
               </tr>
             </thead>
             <tbody>
-            { viewUsers?.length ?
-                viewUsers
-                  .map((user, index) => (
-                <tr 
-                  key={index}
-                  className='max-lg:text-sm max-sm:text-xs hover:bg-gray-50'>
-                    <td className="border px-4 py-2">{index + 1}</td>
+              {currentRows?.length ? (
+                currentRows.map((user, index) => (
+                  <tr
+                    key={index}
+                    className="max-lg:text-sm max-sm:text-xs hover:bg-gray-50"
+                  >
+                    <td className="border px-4 py-2">
+                      {" "}
+                      {(currentPage - 1) * rowsPerPage + index + 1}
+                    </td>
                     <td className="border px-4 py-2">{user.name}</td>
                     <td className="border px-4 py-2">{user.email}</td>
-                    {view === 'archive' && (
+                    {view === "archive" && (
                       <td className="border px-4 py-2">archived</td>
                     )}
-                    {view === 'active' && (
+                    {view === "active" && (
                       <td className="border px-4 py-2">active</td>
                     )}
-                    {(view === 'online' || view === 'offline') && (
+                    {(view === "online" || view === "offline") && (
                       <td className="border px-4 py-2">online</td>
                     )}
-                                        
-                    {(loggedInUser === 'supervisor' && view === 'shift & counter') && (
-                      <>
-                        <td className="border px-4 py-2">
-                          {(editShiftAndCounter && editShiftAndCounterId === user.id) ? (
-                            <select 
-                              className='border-0 !m-auto bg-transparent text-gray-700'
-                              name="shift" 
-                              id="shift"
-                              onChange={(e) =>
-                                setShiftAndCounter((prev) => ({
-                                  ...prev,
-                                  shift: e.target.value,
-                                }))}
+
+                    {loggedInUser === "supervisor" &&
+                      view === "shift & counter" && (
+                        <>
+                          <td className="border px-4 py-2">
+                            {editShiftAndCounter &&
+                            editShiftAndCounterId === user.id ? (
+                              <select
+                                className="border-0 !m-auto bg-transparent text-gray-700"
+                                name="shift"
+                                id="shift"
+                                value={shiftAndCounter.shift}
+                                onChange={(e) =>
+                                  setShiftAndCounter((prev) => ({
+                                    ...prev,
+                                    shift: e.target.value,
+                                  }))
+                                }
                               >
-                                <option value="morning" >Morning</option>
-                                <option value="evening" >Evening</option>
-                          </select>
+                                <option value="morning">Morning</option>
+                                <option value="evening">Evening</option>
+                              </select>
+                            ) : (
+                              <span>{user.shift}</span>
+                            )}
+                          </td>
+                          <td className="border px-4 py-2">
+                            {editShiftAndCounter &&
+                            editShiftAndCounterId === user.id ? (
+                              <select
+                                className="border-0 bg-transparent p-0 !max-w-10 m-auto text-gray-700"
+                                name="counter"
+                                value={shiftAndCounter.counter}
+                                onChange={(e) =>
+                                  setShiftAndCounter((prev) => ({
+                                    ...prev,
+                                    counter: +e.target.value,
+                                  }))
+                                }
+                                id="counter"
+                              >
+                                {Array.from(
+                                  { length: 20 },
+                                  (_, i) => i + 1
+                                ).map((counter) => (
+                                  <option
+                                    key={counter}
+                                    value={counter}
+                                    className="!max-w-[0.3px]"
+                                  >
+                                    {counter}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span>{user.counter}</span>
+                            )}
+                          </td>
 
-                          ):(
-                            <span>{user.shift}</span> 
-                          ) }
-                          
-                        </td>
-                        <td className="border px-4 py-2">
-                        {(editShiftAndCounter && editShiftAndCounterId === user.id) ? (
-                          <select 
-                            className='border-0 bg-transparent p-0 !max-w-10 m-auto text-gray-700'
-                            name="counter" 
-                            onChange={(e) =>
-                              setShiftAndCounter((prev) => ({
-                                ...prev,
-                                counter: +e.target.value,
-                              }))}
-                            id="counter">
-                            {Array.from({ length:20 }, (_,i) => i+1).map((counter) => (
-                              <option 
-                                key={counter} 
-                                value={counter}
-                                className='!max-w-[0.3px]' >
-                                {counter}
-                              </option>
-                        ))}
-                        </select>
-                        ):(
-                          <span>{user.counter}</span>
-                        )}
-                        
-                      </td>
-
-                      {/* This the the place were are */}
-                      {(editShiftAndCounter && editShiftAndCounterId === user.id) ? (
-                        <>
-                        <td>
-                          <input 
-                            type="date" 
-                            onChange={(e) =>
-                              setShiftAndCounter((prev) => ({
-                                ...prev,
-                                startDate: new Date(e.target.value),
-                              }))
-                            }
-                            
-                          />
-                        </td>
-                         <td>
-                         <input type="date" 
-                            onChange={(e) =>
-                              setShiftAndCounter((prev) => ({
-                                ...prev,
-                                startDate: new Date(e.target.value),
-                              }))
-                            }
-                           />
-                       </td>
-                       </>
-                      ):(
-                        <>
-                          <td className="border px-4 py-2"><FormatDate date={user.shiftStartDate} /></td>
-                          <td className="border px-4 py-2"><FormatDate date={user.shiftEndDate} /></td>
+                          {/* This the the place were are */}
+                          {editShiftAndCounter &&
+                          editShiftAndCounterId === user.id ? (
+                            <>
+                              <td>
+                                <input
+                                  type="date"
+                                  onChange={(e) =>
+                                    setShiftAndCounter((prev) => ({
+                                      ...prev,
+                                      startDate: new Date(e.target.value),
+                                    }))
+                                  }
+                                  className="border px-2 py-1 bg-transparent"
+                                  value={
+                                    shiftAndCounter.startDate
+                                      .toISOString()
+                                      .split("T")[0]
+                                  }
+                                />
+                              </td>
+                              <td>
+                                <input
+                                  type="date"
+                                  onChange={(e) =>
+                                    setShiftAndCounter((prev) => ({
+                                      ...prev,
+                                      endDate: new Date(e.target.value),
+                                    }))
+                                  }
+                                  className="border px-2 py-1 bg-transparent"
+                                  value={
+                                    shiftAndCounter.endDate
+                                      .toISOString()
+                                      .split("T")[0]
+                                  }
+                                />
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="border px-4 py-2">
+                                <FormatDate date={user.shiftStartDate} />
+                              </td>
+                              <td className="border px-4 py-2">
+                                <FormatDate date={user.shiftEndDate} />
+                              </td>
+                            </>
+                          )}
                         </>
                       )}
-                      
-                      </>
-                    )}
                     <td className="border px-4 py-2">
-                      {view === 'shift & counter' ? (
-                        (editShiftAndCounter && editShiftAndCounterId === user.id) ? (
+                      {view === "shift & counter" ? (
+                        editShiftAndCounter &&
+                        editShiftAndCounterId === user.id ? (
                           showShiftAndCounterModel ? (
                             <ShiftAndCounterModel
-                              userId={user.id} 
-                              counter = {shiftAndCounter.counter} 
-                              shift = {shiftAndCounter.shift}
+                              userId={user.id}
+                              counter={shiftAndCounter.counter}
+                              shift={shiftAndCounter.shift}
                               startDate={shiftAndCounter.startDate}
                               role={type}
                               endDate={shiftAndCounter.endDate}
-                              setShowShiftAndCounterModel={setShowShiftAndCounterModel}
+                              setShowShiftAndCounterModel={
+                                setShowShiftAndCounterModel
+                              }
+                              setEditShiftAndCounter={setEditShiftAndCounter}
                             />
-                          ):(
-                            <button 
-                            onClick={() => {
-                                      setShowShiftAndCounterModel(true)
-                  
-                                    }
-                                    }
-                            className='!border-0 py-2 px-4 text-md bg-gray-50 hover:cursor-pointer hover:bg-green-100'
-                          >
-                            Apply
-                          </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setShowShiftAndCounterModel(true);
+                              }}
+                              className="!border-0 py-2 px-4 text-md bg-gray-50 hover:cursor-pointer hover:bg-green-100"
+                            >
+                              Apply
+                            </button>
                           )
-                          
                         ) : (
-                          <button 
+                          <button
                             onClick={() => {
-                              setEditShiftAndCounter(true)
+                              setEditShiftAndCounter(true);
                               setEditShiftAndCounterId(user.id);
                             }}
-                            className='!border-0 py-2 px-4 text-md bg-gray-50 hover:cursor-pointer hover:bg-green-100'
+                            className="!border-0 py-2 px-4 text-md bg-gray-50 hover:cursor-pointer hover:bg-green-100"
                           >
                             Edit
                           </button>
                         )
-                      ) : (
-                        view === 'archive' ? (
-                          (showArchiveModel && userArchivedId) ? (
-                            <ArchiveModel 
-                              userId={userArchivedId} 
-                              role={type} 
-                              status='activate' 
-                              setShowArchiveModel={setShowArchiveModel}
-                              setUserArchivedId={setUserArchivedId}
-                            />
-                          ):(
-                            <button
-                              onClick={() => {
-                                setShowArchiveModel(true),
-                                setUserArchivedId(user.id)
-                              }}
-                              className='!border-0 py-2 px-4 text-md bg-gray-50 hover:cursor-pointer hover:bg-green-100'
-                            >
-                              Activate
+                      ) : view === "archive" ? (
+                        showArchiveModel && userArchivedId ? (
+                          <ArchiveModel
+                            userId={userArchivedId}
+                            role={type}
+                            status="activate"
+                            setShowArchiveModel={setShowArchiveModel}
+                            setUserArchivedId={setUserArchivedId}
+                          />
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setShowArchiveModel(true),
+                                setUserArchivedId(user.id);
+                            }}
+                            className="!border-0 py-2 px-4 text-md bg-gray-50 hover:cursor-pointer hover:bg-green-100"
+                          >
+                            Activate
                           </button>
-                          )
-                          ):(
-                            <ActionMenu userId={user.id}/>
-                          )
-                        
+                        )
+                      ) : (
+                        <ActionMenu userId={user.id} />
                       )}
                     </td>
-
-
                   </tr>
-              )):<p>{`No ${type} found`}</p>}
-              
+                ))
+              ) : (
+                <p>{`No ${type} found`}</p>
+              )}
             </tbody>
-            </table>
+          </table>
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="grid grid-cols-3 max-w-screen-md items-center mx-auto gap-10 mt-4">
+              <button
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded disabled:opacity-50"
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </button>
+              <p className="text-gray-700 text-center">
+                Page {currentPage} of {totalPages}
+              </p>
+              <button
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded disabled:opacity-50"
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                }
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </button>
             </div>
+          )}
+        </div>
       </div>
-        
     </div>
-  )
+  );
 }

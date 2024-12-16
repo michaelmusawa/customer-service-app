@@ -1,7 +1,7 @@
 'use client'
 
 
-import { archiveUser, assignShiftAndCounter } from '@/app/lib/action';
+import { assignShiftAndCounter } from '@/app/lib/action';
 import { UserState } from '@/app/lib/definitions';
 import { useRouter, useSearchParams } from 'next/navigation';
 import React from 'react'
@@ -17,7 +17,8 @@ export default function ShiftAndCounterModel({
     startDate,
     endDate,
     role,
-    setShowShiftAndCounterModel
+    setShowShiftAndCounterModel,
+    setEditShiftAndCounter
  }:{ 
     userId:string,
     counter:number,
@@ -26,6 +27,7 @@ export default function ShiftAndCounterModel({
     endDate:Date,
     role: string,
     setShowShiftAndCounterModel: (value: boolean) => void;
+    setEditShiftAndCounter: (value: boolean) => void;
  }) {
     const initialState: UserState = { response: null, message: null, errors: {} };
       const assignShiftAndCounterById = assignShiftAndCounter.bind(null, userId);
@@ -38,17 +40,20 @@ export default function ShiftAndCounterModel({
 
       if(state.response){
         setShowShiftAndCounterModel(false)
+        setEditShiftAndCounter(false)
       }
 
       if (state?.message) {
         setShowShiftAndCounterModel(false)
+        setEditShiftAndCounter(false)
         if (state?.response === '!ok') {
           toast.error(state.message);
         } else if (state?.response === 'ok') {
-          toast.error(state.message);
+          toast.success(state.message);
         } 
       } else if (state?.state_error) {
         setShowShiftAndCounterModel(false)
+        setEditShiftAndCounter(false)
         toast.error(state.state_error);
       } else {
         toast.dismiss();
@@ -69,16 +74,18 @@ export default function ShiftAndCounterModel({
 
             {id ? (
               <button
-              onClick={() => router.push('/dashboard/supervisor/notification')}
-              className="!bg-green-800 px-1 py-1 !text-sm !text-gray-white hover:bg-gray-100" 
-              type='submit'> Yes,&nbsp;update shift!
-              
+                onClick={() => router.push('/dashboard/supervisor/notification')}
+                className="!bg-green-800 px-1 py-1 !text-sm !text-gray-white hover:bg-gray-100" 
+                type='submit'
+              >
+                 Yes,&nbsp;update shift! 
             </button>
             ): (
               <button
                 className="!bg-green-800 px-1 py-1 !text-sm !text-gray-white hover:bg-gray-100" 
-                type='submit'> Yes,&nbsp;update shift!
-                
+                type='submit'
+              > 
+              Yes,&nbsp;update shift!
               </button>
             )}
 

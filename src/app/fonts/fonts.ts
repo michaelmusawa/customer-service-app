@@ -40,7 +40,17 @@ export const inter = localFont({
   variable: '--font-inter',
  });
  
-// export const lusitana = localFont({
-//   src: './Lusitana/Lusitana-Regular.ttf',
-//   display: 'swap',
-// });
+export const lusitana = localFont({
+  src: [
+    {
+      path: './Lusitana/Lusitana-Bold.ttf',
+      weight: '700',
+      style: 'normal'
+    },{
+      path: './Lusitana/Lusitana-Regular.ttf',
+      weight: '400',
+      style: 'normal'
+    }
+  ],
+  variable: '--font-lusitana',
+});

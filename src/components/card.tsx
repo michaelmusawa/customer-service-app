@@ -1,60 +1,77 @@
-import {
-    BanknotesIcon,
-    InboxIcon,
-  } from '@heroicons/react/24/outline';
-import { lusitana } from '@/app/fonts/fonts';
-import { Record } from '@/app/lib/definitions';
-  
-  const iconMap = {
-    receipt: BanknotesIcon,
-    invoice: BanknotesIcon,
-    records: InboxIcon,
-  };
-    
-  export function Card({
-    title,
-    value,
-    type,
-  }: {
-    title: string;
-    value: Record[] | undefined;
-    type: 'records' |'invoice' | 'receipt';
-  }) {
-    const Icon = iconMap[type];
-  
+import { BanknotesIcon, InboxIcon } from "@heroicons/react/24/outline";
+import { lusitana } from "@/app/fonts/fonts";
+import { GroupedByDay, GroupedByWeek } from "@/app/lib/utils";
+import { GroupedByMonth } from "@/app/dashboard/(overview)/page";
+import { getServiceStats } from "@/app/lib/data";
 
-    return (
-      <div className="rounded-xl border border-gray-800 bg-gray-300">
-        <div className="flex p-2">
-          {Icon ? <Icon className="h-5 w-5 text-gray-800" /> : null}
-          <h3 className="ml-2 text-sm font-medium text-gray-800">{title}</h3>
-        </div>
-  
-        {type === 'records' ? (
-          <h2
-            className={`${lusitana.className} bg-gray-50 truncate rounded-xl px-4 py-2 text-center bold text-4xl max-md:text-xl text-green-800 font-extrabold max-md:font-bold`}
-          >
-            {value?.length || 0}
-          </h2>
-        ) : (
-          <h2
-          className={`${lusitana.className} bg-gray-50 truncate rounded-xl px-4 py-2 text-center bold text-4xl max-md:text-xl text-green-800 font-extrabold max-md:font-bold`}
+const iconMap = {
+  services: BanknotesIcon,
+  invoice: BanknotesIcon,
+  records: InboxIcon,
+};
+
+export function Card({
+  title,
+  value,
+  type,
+}: {
+  title: string;
+  value: GroupedByDay[] | GroupedByWeek[] | GroupedByMonth[];
+  type: "records" | "invoice" | "services";
+}) {
+  const Icon = iconMap[type];
+
+  function getTotalNumberOfRecords(
+    records: GroupedByDay[] | GroupedByWeek[] | GroupedByMonth[]
+  ): number {
+    const services = getServiceStats(records);
+    return services.reduce((total, entry) => total + entry.count, 0);
+  }
+
+  function getTotalValue(
+    records: GroupedByDay[] | GroupedByWeek[] | GroupedByMonth[]
+  ): number {
+    const services = getServiceStats(records);
+    return services.reduce((total, entry) => total + entry.totalValue, 0);
+  }
+
+  function getTypesOfServices(
+    records: GroupedByDay[] | GroupedByWeek[] | GroupedByMonth[]
+  ): number {
+    const services = getServiceStats(records);
+    return services.length;
+  }
+
+  const records = getTotalNumberOfRecords(value);
+  const numberOfServices = getTypesOfServices(value);
+  const totalValue = getTotalValue(value);
+
+  return (
+    <div className="rounded-xl bg-gray-50 p-2 shadow-sm">
+      <div className="flex p-4">
+        {Icon ? <Icon className="h-5 w-5 text-gray-700" /> : null}
+        <h3 className="ml-2 text-sm font-medium text-gray-800">{title}</h3>
+      </div>
+
+      {type === "records" ? (
+        <h2
+          className={`${lusitana.className} truncate rounded-xl bg-white px-4 py-8 text-center text-2xl`}
         >
-          {type === 'receipt' ? (
+          {records || 0}
+        </h2>
+      ) : (
+        <h2
+          className={`${lusitana.className} truncate rounded-xl bg-white px-4 py-8 text-center text-2xl`}
+        >
+          {type === "services" ? (
+            <>{numberOfServices || 0}</>
+          ) : (
             <>
-            <span className='max-xl:hidden'>Ksh.</span> {value?.[0].receiptTotal || 0}
-            </>
-            
-          ):(
-            <>
-            <span className='max-xl:hidden'>Ksh.</span> {value?.[0].invoiceTotal || 0}
+              <span className="max-xl:hidden">Ksh.</span> {totalValue || 0}
             </>
           )}
-         
         </h2>
-        )}
-      </div>
-    );
-  }
-  
-  
+      )}
+    </div>
+  );
+}

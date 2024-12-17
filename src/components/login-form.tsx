@@ -1,39 +1,39 @@
-'use client';
- 
-import { lusitana } from '@/app/fonts/fonts';
+"use client";
+
+import { lusitana } from "@/app/fonts/fonts";
 import {
   AtSymbolIcon,
   KeyIcon,
   ExclamationCircleIcon,
-} from '@heroicons/react/24/outline';
-import ArrowRightIcon from './icons/arrowRight';
-import { useFormStatus,useFormState } from 'react-dom';
-import { authenticate } from '@/app/lib/action';
-
+} from "@heroicons/react/24/outline";
+import ArrowRightIcon from "./icons/arrowRight";
+import { useFormStatus, useFormState } from "react-dom";
+import { authenticate } from "@/app/lib/action";
 
 function LoginButton() {
-  const { pending } = useFormStatus(); 
+  const { pending } = useFormStatus();
 
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (pending) {
       e.preventDefault();
     }
-
-  }
-    return (
-        <button type='submit' 
-        disabled={pending}
-        onClick={handleClick}
-        className='flex gap-2 mt-2' >
-            {pending? "Logging in..." : "Login"}
-            <ArrowRightIcon className='w-4'/>
-        </button>
-    );
+  };
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      onClick={handleClick}
+      className="flex gap-2 mt-2"
+    >
+      {pending ? "Logging in..." : "Login"}
+      <ArrowRightIcon className="w-4" />
+    </button>
+  );
 }
- 
+
 export default function LoginForm() {
-  const [errorMessage, dispatch ] = useFormState(authenticate, undefined);
- 
+  const [errorMessage, dispatch] = useFormState(authenticate, undefined);
+
   return (
     <form action={dispatch} className="space-y-3 shadow-md shadow-black/20">
       <div className="flex-1 rounded-lg bg-gray-50 px-6 pb-4 pt-8">
@@ -41,7 +41,7 @@ export default function LoginForm() {
           Please log in to continue.
         </h1>
         <div className="w-full">
-        <div>
+          <div>
             <label
               className="mb-1 mt-5 block text-xs font-medium text-gray-700"
               htmlFor="email"

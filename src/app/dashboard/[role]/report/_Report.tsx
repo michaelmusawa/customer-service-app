@@ -1,55 +1,69 @@
 "use client";
+
 import { Record } from "@/app/lib/definitions";
-import { filterRecordsByTimeRange } from "@/app/lib/utils";
+import {
+  filterRecordsByTimeRange,
+  groupRecordsByUserName,
+} from "@/app/lib/utils";
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 export default function ReportPage({ records }: { records: Record[] }) {
   const [analysisType, setAnalysisType] = useState<string>("year");
-  const [useRecords, setUseRecords] = useState(() => {
-    if (analysisType === "year")
-      return filterRecordsByTimeRange(records, analysisType);
-    if (analysisType === "month")
-      return filterRecordsByTimeRange(records, analysisType);
-    if (analysisType === "week")
-      return filterRecordsByTimeRange(records, analysisType);
-    if (analysisType === "day")
-      return filterRecordsByTimeRange(records, analysisType);
-    return [];
-  });
+  const [recordType, setRecordType] = useState<string>("invoice");
+  const [rankBy, setRankBy] = useState<string>("service");
+  const [sortOrder, setSortOrder] = useState<string>("totalValue");
 
-  const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setAnalysisType(event.target.value);
-  };
+  const [useRecords, setUseRecords] = useState<Record[]>([]);
+  const [recordsOfType, setRecordsOfType] = useState<Record[]>([]);
 
+  // Update `recordsOfType` whenever `recordType` or `records` changes
   useEffect(() => {
-    const filteredRecords = filterRecordsByTimeRange(records, analysisType);
-    setUseRecords(filteredRecords); // Update the state with filtered records
-  }, [analysisType, records]);
+    const filtered = records.filter(
+      (record) => record.recordType === recordType
+    );
+    setRecordsOfType(filtered);
+  }, [recordType, records]);
 
-  // Group records by service category
-  const groupedRecords = useRecords?.reduce(
-    (acc: Record<string, { count: number; totalValue: number }>, record) => {
-      if (!acc[record.service]) {
-        acc[record.service] = { count: 0, totalValue: 0 };
+  // Update `useRecords` whenever `analysisType` or `recordsOfType` changes
+  useEffect(() => {
+    const filtered = filterRecordsByTimeRange(recordsOfType, analysisType);
+    setUseRecords(filtered);
+  }, [analysisType, recordsOfType]);
+
+  const groupedRecords = useMemo(() => {
+    return useRecords.reduce((acc: any, record) => {
+      const key = rankBy === "service" ? record.service : record.userName;
+
+      if (!acc[key]) {
+        acc[key] = { count: 0, totalValue: 0 };
       }
-      acc[record.service].count += 1;
-      acc[record.service].totalValue += record.value;
+      acc[key].count += 1;
+      acc[key].totalValue += record.value;
       return acc;
-    },
-    {}
-  );
+    }, {});
+  }, [useRecords, rankBy]);
+
+  const sortedGroupedRecords = useMemo(() => {
+    const sorted = Object.entries(groupedRecords).sort((a: any, b: any) => {
+      if (sortOrder === "totalValue") return b[1].totalValue - a[1].totalValue;
+      return b[1].count - a[1].count;
+    });
+    return sorted;
+  }, [groupedRecords, sortOrder]);
 
   // Calculate overall totals
-  const overallTotals = Object.values(groupedRecords).reduce(
-    (totals, group) => {
-      totals.totalServed += group.count;
-      totals.totalValue += group.totalValue;
-      return totals;
-    },
-    { totalServed: 0, totalValue: 0 }
-  );
+  const overallTotals = useMemo(() => {
+    return Object.values(groupedRecords).reduce(
+      (totals: any, group: any) => {
+        totals.totalServed += group.count;
+        totals.totalValue += group.totalValue;
+        return totals;
+      },
+      { totalServed: 0, totalValue: 0 }
+    );
+  }, [groupedRecords]);
 
   const generatePDF = () => {
     const doc = new jsPDF();
@@ -117,7 +131,21 @@ export default function ReportPage({ records }: { records: Record[] }) {
         <h2 className="flex text-2xl font-semibold justify-center">
           Overall Totals
         </h2>
-        <div className="flex justify-end">
+        <div className="flex justify-between">
+          <div className="flex items-center justify-items-end text-sm font-semibold uppercase">
+            <label htmlFor="analysisType" className="flex-1 mr-2">
+              Record Type:
+            </label>
+            <select
+              id="recordType"
+              value={recordType}
+              onChange={(e) => setRecordType(e.target.value)}
+              className="flex-1 border px-2 py-1 rounded text-gray-700"
+            >
+              <option value="receipt">Receipt</option>
+              <option value="invoice">Invoice</option>
+            </select>
+          </div>
           <div className="flex items-center justify-items-end text-sm font-semibold uppercase">
             <label htmlFor="analysisType" className="flex-1 mr-2">
               Analysis Type:
@@ -125,7 +153,7 @@ export default function ReportPage({ records }: { records: Record[] }) {
             <select
               id="analysisType"
               value={analysisType}
-              onChange={handleChange}
+              onChange={(e) => setAnalysisType(e.target.value)}
               className="flex-1 border px-2 py-1 rounded text-gray-700"
             >
               <option value="year">This year</option>
@@ -144,7 +172,12 @@ export default function ReportPage({ records }: { records: Record[] }) {
             </p>
           </div>
           <div className="flex flex-col flex-1 items-center">
-            <p className="text-lg">Total Invoices:</p>
+            {recordType === "invoice" ? (
+              <p className="text-lg">Total Invoices:</p>
+            ) : (
+              <p className="text-lg">Total Receipt:</p>
+            )}
+
             <p className="text-3xl font-extrabold">
               {overallTotals.totalServed}
             </p>
@@ -158,36 +191,139 @@ export default function ReportPage({ records }: { records: Record[] }) {
         </div>
       </div>
 
-      {/* Service category summaries */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white border border-gray-300 mx-auto">
-          <thead className="bg-green-100 text-green-800 max-lg:text-sm max-sm:text-xs">
-            <tr>
-              <th className="border px-2 py-2">No.</th>
-              <th className="border px-4 py-2">Service Category</th>
-              <th className="border px-4 py-2">Number Served</th>
-              <th className="border px-4 py-2">Total Value</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Object.entries(groupedRecords).map(
-              ([serviceCategory, { count, totalValue }], index) => (
-                <tr
-                  className="max-lg:text-sm max-sm:text-xs hover:bg-gray-50"
-                  key={serviceCategory}
-                >
-                  <td className="border px-2 py-2 text-center">{index + 1}</td>
-                  <td className="border px-4 py-2">{serviceCategory}</td>
-                  <td className="border px-4 py-2">{count}</td>
-                  <td className="border px-4 py-2 font-bold">
-                    {totalValue.toLocaleString("en-US")}/=
-                  </td>
-                </tr>
-              )
-            )}
-          </tbody>
-        </table>
+      <div className="flex justify-between">
+        <div className="flex items-center justify-items-end text-sm font-semibold uppercase">
+          <label htmlFor="analysisType" className="flex-1 mr-2">
+            Ranked by:
+          </label>
+          <select
+            id="rankBy"
+            value={rankBy}
+            onChange={(e) => setRankBy(e.target.value)}
+            className="flex-1 border px-2 py-1 rounded text-gray-700"
+          >
+            <option value="service">Service</option>
+            <option value="biller">Biller</option>
+          </select>
+        </div>
+
+        <div className="flex items-center justify-items-end text-sm font-semibold uppercase">
+          <label htmlFor="analysisType" className="flex-1 mr-2">
+            Sort:
+          </label>
+          <select
+            id="sortOrder"
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+            className="flex-1 border px-2 py-1 rounded text-gray-700"
+          >
+            <option value="numberServed">Number served</option>
+            <option value="totalValue">Total Value</option>
+          </select>
+        </div>
       </div>
+
+      {/* Service category summaries */}
+      {/* {rankBy === "service" ? (
+        <div className="overflow-x-auto">
+          <table className="min-w-full bg-white border border-gray-300 mx-auto">
+            <thead className="bg-green-100 text-green-800 max-lg:text-sm max-sm:text-xs">
+              <tr>
+                <th className="border px-2 py-2">No.</th>
+                <th className="border px-4 py-2">Service Category</th>
+                <th className="border px-4 py-2">Number Served</th>
+                <th className="border px-4 py-2">Total Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(sortedGroupedRecords).map(
+                ([serviceCategory, { count, totalValue }], index) => (
+                  <tr
+                    className="max-lg:text-sm max-sm:text-xs hover:bg-gray-50"
+                    key={serviceCategory}
+                  >
+                    <td className="border px-2 py-2 text-center">
+                      {index + 1}
+                    </td>
+                    <td className="border px-4 py-2">{serviceCategory}</td>
+                    <td className="border px-4 py-2">{count}</td>
+                    <td className="border px-4 py-2 font-bold">
+                      {totalValue.toLocaleString("en-US")}/=
+                    </td>
+                  </tr>
+                )
+              )}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        // Ranked table for billers
+        <div className="overflow-x-auto">
+          <table className="min-w-full bg-white border border-gray-300 mx-auto">
+            <thead className="bg-green-100 text-green-800 max-lg:text-sm max-sm:text-xs">
+              <tr>
+                <th className="border px-2 py-2">No.</th>
+                <th className="border px-4 py-2">Name</th>
+                <th className="border px-4 py-2">Ticket</th>
+                <th className="border px-4 py-2">Customers</th>
+                <th className="border px-4 py-2">Record Type</th>
+                <th className="border px-4 py-2">Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedUserRecords &&
+                sortedUserRecords.map((record, index) => (
+                  <tr
+                    className="max-lg:text-sm max-sm:text-xs hover:bg-gray-50"
+                    key={index}
+                  >
+                    <td className="border px-2 py-2 text-center">
+                      {index + 1}
+                    </td>
+                    <td className="border px-4 py-2">{record.name}</td>
+                    <td className="border px-4 py-2">
+                      {record.numberOfTickets}
+                    </td>
+                    <td className="border px-4 py-2">
+                      {record.numberOfTickets}
+                    </td>
+                    <td className="border px-4 py-2">{record.shift}</td>
+                    <td className="border px-4 py-2 font-bold">
+                      {record.value.toLocaleString("en-US")}/=
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+      )} */}
+
+      {/* Table */}
+      <table className="min-w-full bg-white border">
+        <thead className="bg-green-100">
+          <tr>
+            <th className="border px-4 py-2">No.</th>
+            <th className="border px-4 py-2">
+              {rankBy === "service" ? "Service Category" : "Biller"}
+            </th>
+            <th className="border px-4 py-2">Number Served</th>
+            <th className="border px-4 py-2">Total Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sortedGroupedRecords.map(([name, data]: any, index: number) => (
+            <tr key={index}>
+              <td className="border px-4 py-2 text-center">{index + 1}</td>
+              <td className="border px-4 py-2">{name}</td>
+              <td className="border px-4 py-2">{data.count}</td>
+              <td className="border px-4 py-2">
+                {data.totalValue.toLocaleString("en-US")}/=
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
       <div className="flex justify-center mt-6 w-fit mx-auto">
         <button
           onClick={generatePDF}

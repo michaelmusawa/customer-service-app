@@ -33,11 +33,20 @@ cron.schedule("0 * * * *", async () => {
 
 export async function authenticate(_currentState: unknown, formData: FormData) {
   try {
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+
     const res = await signIn("credentials", {
-      email: formData.get("email"),
-      password: formData.get("password"),
+      email,
+      password,
       redirect: false,
     });
+
+    const user = await getUser(email);
+
+    if (user?.status === "archive") {
+      return "Sorry,your account is inactive.";
+    }
 
     if (!res.error) {
       redirect("/dashboard");
@@ -84,7 +93,7 @@ export async function fetchUsers(user: string) {
       `
       SELECT * FROM "User"
       WHERE role = $1
-      ORDER BY "createdAt" DESC
+      ORDER BY "name" ASC
       `,
       [user]
     );
@@ -202,8 +211,6 @@ export async function editUser(
     return {
       errors: validatedFields.error.flatten().fieldErrors,
       message: "Missing Fields. Failed to Edit user.",
-      state_error: null,
-      success: false,
     };
   }
 
@@ -273,21 +280,26 @@ export async function editUser(
       [name, email, hashedPass, role, imagePath, id]
     );
 
-    if (session?.user.role === role) {
-      if (resetPass === "true") {
-        redirect("/dashboard");
-      }
-      revalidatePath(`/dashboard/${session?.user.role}/profile`);
-    }
     revalidatePath(`/dashboard/${session?.user.role}/${role}s/create`);
   } catch (error) {
     console.error("Error updating user:", error);
     return {
-      errors: null,
       state_error: "Error updating user.",
       success: false,
     };
   }
+
+  if (session?.user.role === role) {
+    if (resetPass === "true") {
+      if (session.user.role === "supersupervisor") {
+        console.log("Im here");
+        redirect("/login");
+      }
+      redirect("/dashboard");
+    }
+    revalidatePath(`/dashboard/${session?.user.role}/profile`);
+  }
+
   if (session?.user.role === role) {
     redirect(`/dashboard/${session?.user.role}/profile?success=true`);
   }
@@ -1034,13 +1046,34 @@ export async function getRecord(id: string) {
   }
 }
 
+export async function getEditedRecord(id: string) {
+  const res = await pool.query<Record>(
+    `
+    SELECT * FROM "EditedRecord" WHERE "recordId" = $1 AND status = 'accepted'`,
+    [id]
+  );
+  const records = res.rows;
+  if (records.length > 0) {
+    return records[0];
+  }
+}
+
 export async function fetchGroupedRecordsByDateRange(
   startDate: string,
   endDate: string
 ): Promise<GroupedRecord[] | undefined> {
   try {
-    const res = await pool.query<GroupedRecord>(
-      `
+    // Authenticate and get the user session
+    const session = await auth();
+    if (!session || !session.user) {
+      throw new Error("User session not found.");
+    }
+
+    const userId = session.user.id;
+    const userRole = session.user.role;
+
+    // Construct the query dynamically based on the user's role
+    const query = `
       WITH Edited AS (
         SELECT 
           e."recordId", 
@@ -1068,6 +1101,7 @@ export async function fetchGroupedRecordsByDateRange(
           COALESCE(e."createdAt", r."createdAt") AS "createdAt"
         FROM "Record" r
         LEFT JOIN Edited e ON r.id = e."recordId"
+        ${userRole === "attendant" ? `WHERE r."userId" = $3` : ""}
       )
       SELECT 
         TO_CHAR(m."createdAt", 'YYYY-MM-DD') AS "date",
@@ -1080,9 +1114,16 @@ export async function fetchGroupedRecordsByDateRange(
       WHERE m."createdAt" BETWEEN $1 AND $2
       GROUP BY "date", "week", "month", m.service
       ORDER BY "date" DESC
-      `,
-      [startDate, endDate]
-    );
+    `;
+
+    // Prepare the query parameters
+    const params =
+      userRole === "attendant"
+        ? [startDate, endDate, userId]
+        : [startDate, endDate];
+
+    // Execute the query
+    const res = await pool.query<GroupedRecord>(query, params);
 
     // Process the results to ensure correct numeric conversions for `totalValue` and `count`
     const records = res.rows.map((row) => ({
@@ -1164,8 +1205,8 @@ export async function fetchMonthlyGroupedRecords(): Promise<
   const allMonthlyRecords = [];
 
   for (let month = 0; month < 12; month++) {
-    const startOfMonth = new Date(year, month, 1).toISOString().split("T")[0]; // Get the start of the current month
-    const endOfMonth = new Date(year, month + 1, 0).toISOString().split("T")[0]; // Get the end of the current month
+    const startOfMonth = new Date(year, month, 1).toISOString().split("T")[0];
+    const endOfMonth = new Date(year, month + 1, 0).toISOString().split("T")[0];
 
     const monthlyRecords = await fetchGroupedRecordsByDateRange(
       `${startOfMonth}T00:00:00.000Z`,

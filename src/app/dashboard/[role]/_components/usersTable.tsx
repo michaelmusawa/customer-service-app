@@ -238,8 +238,6 @@ export default function UsersTable({
                   <>
                     <th className="border px-4 py-2">Shift</th>
                     <th className="border px-4 py-2">Counter</th>
-                    <th className="border px-4 py-2">Start date</th>
-                    <th className="border px-4 py-2">End date</th>
                   </>
                 )}
                 <th className="border px-4 py-2">Actions</th>
@@ -327,54 +325,6 @@ export default function UsersTable({
                           </td>
 
                           {/* This the the place were are */}
-                          {editShiftAndCounter &&
-                          editShiftAndCounterId === user.id ? (
-                            <>
-                              <td>
-                                <input
-                                  type="date"
-                                  onChange={(e) =>
-                                    setShiftAndCounter((prev) => ({
-                                      ...prev,
-                                      startDate: new Date(e.target.value),
-                                    }))
-                                  }
-                                  className="border px-2 py-1 bg-transparent"
-                                  value={
-                                    shiftAndCounter.startDate
-                                      .toISOString()
-                                      .split("T")[0]
-                                  }
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="date"
-                                  onChange={(e) =>
-                                    setShiftAndCounter((prev) => ({
-                                      ...prev,
-                                      endDate: new Date(e.target.value),
-                                    }))
-                                  }
-                                  className="border px-2 py-1 bg-transparent"
-                                  value={
-                                    shiftAndCounter.endDate
-                                      .toISOString()
-                                      .split("T")[0]
-                                  }
-                                />
-                              </td>
-                            </>
-                          ) : (
-                            <>
-                              <td className="border px-4 py-2">
-                                <FormatDate date={user.shiftStartDate} />
-                              </td>
-                              <td className="border px-4 py-2">
-                                <FormatDate date={user.shiftEndDate} />
-                              </td>
-                            </>
-                          )}
                         </>
                       )}
                     <td className="border px-4 py-2">

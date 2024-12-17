@@ -48,7 +48,7 @@ export default function NavLinks({ role }: { role: string }) {
       role: ["supersupervisor"],
     },
     {
-      name: "Notification",
+      name: "Edit Requests",
       href: `/dashboard/${role}/notification`,
       icon: <NotificationIcon />,
       role: ["attendant", "supervisor"],

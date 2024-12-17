@@ -65,30 +65,6 @@ export const Services: Service[] = [
   },
 ];
 
-// export const getServiceStats = (records: Record[]) => {
-//   const serviceStats: {
-//     [key: string]: { count: number; totalValue: number };
-//   } = {};
-
-//   records.forEach((record) => {
-//     const { service, value } = record;
-//     if (!serviceStats[service]) {
-//       serviceStats[service] = { count: 0, totalValue: 0 };
-//     }
-//     serviceStats[service].count += 1;
-//     serviceStats[service].totalValue += value;
-//   });
-//   const serviceStatsArray = Object.entries(serviceStats).map(
-//     ([service, stats]) => ({
-//       service,
-//       count: stats.count,
-//       totalValue: stats.totalValue,
-//     })
-//   );
-
-//   return serviceStatsArray;
-// };
-
 export const getServiceStats = (
   groupedData: GroupedByMonth[] | GroupedByDay[] | GroupedByWeek[]
 ) => {
@@ -101,7 +77,7 @@ export const getServiceStats = (
     group.records.forEach((record) => {
       const service = record.service; // Each record has only one service
       const totalValue = record.totalValue;
-      const count = parseInt(record.count, 10);
+      const count = record.count;
 
       if (!serviceStats[service]) {
         serviceStats[service] = { count: 0, totalValue: 0 };

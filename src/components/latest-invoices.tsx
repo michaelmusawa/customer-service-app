@@ -10,10 +10,11 @@ export default async function LatestInvoices({
 }: {
   records: GroupedByMonth[] | GroupedByDay[] | GroupedByWeek[] | undefined;
 }) {
-  let services = [];
-  if (records) {
-    services = getServiceStats(records);
-  }
+  const services = getServiceStats(records ?? []);
+
+  const sortedServices = [...services].sort(
+    (a, b) => b.totalValue - a.totalValue
+  );
 
   return (
     <div className="flex w-full flex-col md:col-span-4 shadow-md shadow-black/20">
@@ -22,8 +23,8 @@ export default async function LatestInvoices({
       </h2>
       <div className="flex grow flex-col justify-between rounded-xl bg-gray-50 p-4">
         <div className="bg-white px-2">
-          {services.length > 0 ? (
-            services.slice(0, 6).map((service, index) => {
+          {sortedServices.length > 0 ? (
+            sortedServices.slice(0, 6).map((service, index) => {
               return (
                 <div
                   key={index}
@@ -45,7 +46,7 @@ export default async function LatestInvoices({
                     <p
                       className={`${lusitana.className} truncate text-sm font-medium md:text-base`}
                     >
-                      Ksh.{service.totalValue}
+                      Ksh.{service.totalValue.toLocaleString("en-US")}
                     </p>
                   </div>
                 </div>

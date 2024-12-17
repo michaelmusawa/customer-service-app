@@ -23,7 +23,7 @@ export default function ProfileCard({
   useEffect(() => {
     if (success === "true") {
       toast.success("Profile edited successfully", {
-        id: "success-toast", // Assign a unique ID for the success message
+        id: "success-toast",
       });
       window.history.replaceState({}, document.title, window.location.pathname);
     }

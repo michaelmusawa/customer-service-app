@@ -16,7 +16,6 @@ export default function Dashboard({
 }: {
   user: string;
   monthlyRecords: GroupedByMonth[];
-  numberOfServices: number;
   dailyRecords: GroupedByDay[];
   weeklyRecords: GroupedByWeek[];
 }) {

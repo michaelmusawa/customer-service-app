@@ -10,7 +10,6 @@ import Funnel from "./icons/funnel";
 import { FormatDate } from "@/app/lib/data";
 import { getPendingRecordIds, mergeRecordsWithEdits } from "@/app/lib/utils";
 import toast from "react-hot-toast";
-import { useSearchParams } from "next/navigation";
 
 export default function RecordsTable({
   records,
@@ -26,14 +25,9 @@ export default function RecordsTable({
   const searches = ["name", "ticket", "service", "attendant", "email"];
   const [searchBy, setSearchBy] = useState("name");
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [startDate, setStartDate] = useState<string | null>(() => {
-    const today = new Date();
-    return today.toISOString().split("T")[0]; // Format as YYYY-MM-DD
-  });
+  const [startDate, setStartDate] = useState<string | null>();
 
-  const [pendingIds, setPendingIds] = useState<string[]>(
-    getPendingRecordIds(records ?? [], editedRecords ?? [])
-  );
+  const pendingIds = getPendingRecordIds(records ?? [], editedRecords ?? []);
 
   const [endDate, setEndDate] = useState<string | null>(null);
   const [startValue, setStartValue] = useState<number | null>(null);
@@ -236,12 +230,14 @@ export default function RecordsTable({
               <th className="border px-4 py-2">Customer Name</th>
               <th className="border px-4 py-2">Service</th>
               <th className="border px-4 py-2">Sub-Service</th>
-              <th className="border px-4 py-2">Record Number</th>
+              <th className="border px-4 py-2">Invoice/Receipt No.</th>
               <th className="border px-4 py-2">Value</th>
               <th className="border px-4 py-2">Date</th>
               <th className="border px-4 py-2">Counter</th>
               <th className="border px-4 py-2">Shift</th>
-              {(role === "supervisor" || role === "admin") && (
+              {(role === "supervisor" ||
+                role === "supersupervisor" ||
+                role === "admin") && (
                 <>
                   <th className="border px-4 py-2">Attendant</th>
                   <th className="border px-4 py-2">Attendant Email</th>
@@ -273,7 +269,7 @@ export default function RecordsTable({
                   </td>
                   <td className="border px-4 py-2">{record.counter}</td>
                   <td className="border px-4 py-2">{record.shift}</td>
-                  {role === "supervisor" && (
+                  {(role === "supervisor" || role === "supersupervisor") && (
                     <>
                       <td className="border px-4 py-2">{record.userName}</td>
                       <td className="border px-4 py-2">{record.userEmail}</td>

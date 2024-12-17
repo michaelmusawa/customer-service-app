@@ -4,7 +4,7 @@ import { createRecord, editRecord, requestEditRecord } from "@/app/lib/action";
 import { RecordState } from "@/app/lib/definitions";
 import { useFormState, useFormStatus } from "react-dom";
 import { Record } from "@/app/lib/definitions";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { CounterContext } from "../counterContext";
 import { Services } from "@/app/lib/data";
 import toast from "react-hot-toast";
@@ -37,7 +37,9 @@ export default function RecordForm({
   record: Record | undefined;
 }) {
   const { counter } = useContext(CounterContext);
-  const [recordType, setRecordType] = useState<string>("invoice");
+  const [recordType, setRecordType] = useState<string>(
+    record?.recordType ?? ""
+  );
 
   const initialState: RecordState = {
     message: null,
@@ -92,9 +94,15 @@ export default function RecordForm({
   );
 
   function FormInputs() {
-    const [service, setService] = useState<string>("Daily parking");
+    const [service, setService] = useState<string>(
+      record?.service ?? "Daily parking"
+    );
     const [subServices, setSubServices] = useState<string[]>(
       Services[0].subServices
+    );
+
+    const [editSubService, setEditSubService] = useState<boolean>(
+      !!record?.subService
     );
 
     function handleServiceChange(selectedService: string) {
@@ -105,6 +113,7 @@ export default function RecordForm({
         setService(service.name);
         setSubServices(service.subServices);
       }
+      setEditSubService(false);
     }
     return (
       <>
@@ -150,7 +159,7 @@ export default function RecordForm({
             required
           />
 
-          <fieldset className="flex border p-2 rounded w-full mb-2">
+          <fieldset className="flex justify-between items-center border p-2 rounded w-full mb-2">
             <legend>Record type:</legend>
             <div>
               <input
@@ -158,10 +167,25 @@ export default function RecordForm({
                 name="recordType"
                 value="invoice"
                 className="mx-2"
-                checked={recordType === "invoice"}
+                checked={
+                  record?.recordType === "invoice" || recordType === "invoice"
+                }
                 onChange={(e) => setRecordType(e.target.value)}
               />
               <label>Invoice</label>
+            </div>
+            <div>
+              <input
+                type="radio"
+                name="recordType"
+                value="receipt"
+                className="mx-2"
+                checked={
+                  record?.recordType === "receipt" || recordType === "receipt"
+                }
+                onChange={(e) => setRecordType(e.target.value)}
+              />
+              <label>Receipt</label>
             </div>
           </fieldset>
 
@@ -203,14 +227,20 @@ export default function RecordForm({
           </label>
           <select
             name="subService"
-            defaultValue={subServices}
+            defaultValue={record?.subService ?? subServices}
             className="border p-2 rounded-lg w-full"
           >
-            {subServices.map((subService, index) => (
-              <option key={index} value={subService}>
-                {subService}
+            {editSubService ? (
+              <option value={record?.subService || ""}>
+                {record?.subService || "Select a sub-service"}
               </option>
-            ))}
+            ) : (
+              subServices.map((subService, index) => (
+                <option key={index} value={subService}>
+                  {subService}
+                </option>
+              ))
+            )}
           </select>
         </div>
 
@@ -223,7 +253,7 @@ export default function RecordForm({
               <input
                 type="text"
                 name="recordNumber"
-                defaultValue={record?.ticket || ""}
+                defaultValue={record?.recordNumber || ""}
                 className="border p-2 rounded w-full"
                 required
               />
@@ -236,7 +266,7 @@ export default function RecordForm({
               <input
                 type="text"
                 name="recordNumber"
-                defaultValue={record?.ticket || ""}
+                defaultValue={record?.recordNumber || ""}
                 className="border p-2 rounded w-full"
                 required
                 disabled

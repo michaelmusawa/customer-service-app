@@ -6,10 +6,10 @@ import { useFormStatus, useFormState } from "react-dom";
 import { User, UserState } from "@/app/lib/definitions";
 import { AtSymbolIcon, KeyIcon } from "@heroicons/react/24/outline";
 import UserIcon from "../icons/userIcon";
-import toast from "react-hot-toast";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import toast from "react-hot-toast";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -29,9 +29,10 @@ export default function ProfileForm({
 }) {
   function Edit() {
     const initialState: UserState = {
-      response: null,
       message: null,
       errors: {},
+      state_error: null,
+      success: null,
     };
     const editUserById = editUser.bind(null, user?.id || "");
     const [editState, formAction] = useFormState(editUserById, initialState);
@@ -39,16 +40,8 @@ export default function ProfileForm({
     const searchParams = useSearchParams();
     const resetPass = searchParams.get("resetPass");
 
-    if (editState?.message) {
-      if (editState?.response === "ok") {
-        toast.success(editState.message);
-      } else if (editState?.response === null) {
-        toast.error(editState.message);
-      }
-    } else if (editState?.state_error) {
+    if (editState.success === false) {
       toast.error(editState.state_error);
-    } else {
-      toast.dismiss();
     }
 
     return (
@@ -158,7 +151,7 @@ export default function ProfileForm({
               <input
                 type="password"
                 id="password"
-                placeholder="Password"
+                placeholder="Leave blank to keep current password"
                 name="password"
                 defaultValue={""}
                 aria-describedby="password-error"

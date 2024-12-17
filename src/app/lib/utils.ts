@@ -228,7 +228,6 @@ export function filterRecordsByTimeRange(
   records: Record[],
   range: string
 ): Record[] {
-  console.log("Im here", range);
   const now = new Date();
   let startDate: Date;
 
@@ -251,14 +250,48 @@ export function filterRecordsByTimeRange(
     default:
       throw new Error("Invalid range specified");
   }
-  console.log("the date", startDate);
-  console.log(records);
-
-  console.log(
-    records.filter((record) => new Date(record.recordCreatedAt) >= startDate)
-  );
 
   return records.filter(
     (record) => new Date(record.recordCreatedAt) >= startDate
   );
+}
+
+export function groupRecordsByUserName(records: Record[]) {
+  return Object.values(
+    records.reduce((acc, record) => {
+      const { userName, value, shift } = record;
+
+      if (!acc[userName]) {
+        acc[userName] = {
+          Name: userName,
+          numberOfTickets: 0,
+          value: 0,
+          shiftCounts: {}, // To track the frequency of shifts
+        };
+      }
+
+      acc[userName].numberOfTickets += 1; // Increment the ticket count
+      acc[userName].value += value || 0; // Sum up the values (handle missing values)
+
+      // Track shift frequency
+      if (shift) {
+        acc[userName].shiftCounts[shift] =
+          (acc[userName].shiftCounts[shift] || 0) + 1;
+      }
+
+      return acc;
+    }, {})
+  ).map((group) => {
+    // Determine the most frequent shift
+    const mostFrequentShift = Object.keys(group.shiftCounts).reduce((a, b) =>
+      group.shiftCounts[a] > group.shiftCounts[b] ? a : b
+    );
+
+    return {
+      Name: group.Name,
+      numberOfTickets: group.numberOfTickets,
+      value: group.value,
+      shift: mostFrequentShift || null, // Handle if no shift is available
+    };
+  });
 }

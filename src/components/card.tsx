@@ -67,7 +67,8 @@ export function Card({
             <>{numberOfServices || 0}</>
           ) : (
             <>
-              <span className="max-xl:hidden">Ksh.</span> {totalValue || 0}
+              <span className="max-xl:hidden">Ksh.</span>{" "}
+              {totalValue.toLocaleString("en-US") || 0}
             </>
           )}
         </h2>

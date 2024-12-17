@@ -33,6 +33,8 @@ export default async function page({
 
   const user = await getUser(session.user.email || "");
 
+  console.log("user email", session.user.email);
+
   return (
     <div>
       <ProfileCard user={user} type={session.user.role} success={success} />

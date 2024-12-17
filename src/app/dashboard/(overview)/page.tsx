@@ -1,12 +1,8 @@
 import {
-  fetchRecordsByAttendant,
-  fetchRecords,
   getUserById,
   fetchMonthlyGroupedRecords,
   fetchWeeklyGroupedRecords,
   fetchDailyGroupedRecords,
-  // fetchDailyGroupedRecords,
-  // fetchWeeklyGroupedRecords,
 } from "../../lib/action";
 import { auth } from "../../../../auth";
 import bcrypt from "bcrypt";
@@ -18,7 +14,6 @@ import {
   groupRecordsByWeek,
 } from "@/app/lib/utils";
 import Dashboard from "./Dashboard";
-import { console } from "inspector";
 
 export type GroupedByMonth = {
   month: string;
@@ -42,26 +37,12 @@ export default async function Page() {
     return redirect(`/dashboard/${user?.role}/profile?resetPass=true`);
   }
 
-  let records;
-  if (
-    session?.user.role === "admin" ||
-    session?.user.role === "supervisor" ||
-    session?.user.role === "supersupervisor"
-  ) {
-    records = await fetchRecords();
-  } else if (session?.user.role === "attendant") {
-    records = await fetchRecordsByAttendant(session?.user.id);
-  }
-
   const monthlyGroupedRecords = await fetchMonthlyGroupedRecords();
   const weeklyGroupedRecords = await fetchWeeklyGroupedRecords();
-  //console.log("debug the shit", weeklyGroupedRecords);
-
   const dailyGroupedRecords = await fetchDailyGroupedRecords();
   const monthlyRecords = groupRecordsByMonth(monthlyGroupedRecords);
   const dailyRecords = groupRecordsByDay(dailyGroupedRecords);
   const weeklyRecords = groupRecordsByWeek(weeklyGroupedRecords);
-  //console.log("The weekly", weeklyRecords[0].records);
 
   return (
     <Dashboard

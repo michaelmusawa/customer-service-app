@@ -102,5 +102,5 @@ export type UserState = {
   };
   state_error?: string | null;
   message?: string | null;
-  success?: boolean;
+  success?: boolean | null;
 };

@@ -52,7 +52,6 @@ export default async function RecordsPage({
     editedRecords = await fetchRequestEditRecordsByUser(userId || "");
   }
 
-  console.log("wwwwwwwwwwwwwwwwwwwwwwwwwwwwwww", edit);
   return (
     <RecordsTable
       records={records}

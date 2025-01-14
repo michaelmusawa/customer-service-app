@@ -1,6 +1,5 @@
 "use client";
 
-import { FormatDate } from "@/app/lib/data";
 import { OnlineUser, User } from "@/app/lib/definitions";
 import ArchiveModel from "@/components/ArchiveModel";
 import EllipsisIcon from "@/components/icons/ellipsisIcon";
@@ -26,8 +25,6 @@ export default function UsersTable({
     userId: string;
     shift: string;
     counter: number;
-    startDate: Date;
-    endDate: Date;
   }
 
   const [view, setView] = useState<string>("active");
@@ -35,8 +32,6 @@ export default function UsersTable({
     userId: "",
     shift: "morning",
     counter: 1,
-    startDate: new Date(),
-    endDate: new Date(),
   });
   const [showArchiveModel, setShowArchiveModel] = useState<boolean>(false);
   const [userArchivedId, setUserArchivedId] = useState<string>("");
@@ -219,7 +214,12 @@ export default function UsersTable({
             )}
           </ul>
         </div>
-        <h2 className="mt-8 text-sm text-gray-500">{`Existing ${type}:`}</h2>
+        {type === "attendant" ? (
+          <h2 className="mt-8 text-sm text-gray-500">Existing Billers</h2>
+        ) : (
+          <h2 className="mt-8 text-sm text-gray-500">{`Existing ${type}:`}</h2>
+        )}
+
         <div className="overflow-x-auto">
           <table className="min-w-full bg-white border border-gray-300  mx-auto">
             <thead className="bg-green-100 text-green-800 max-lg:text-sm max-sm:text-xs">
@@ -240,7 +240,11 @@ export default function UsersTable({
                     <th className="border px-4 py-2">Counter</th>
                   </>
                 )}
-                <th className="border px-4 py-2">Actions</th>
+                {(view === "active" ||
+                  view === "archive" ||
+                  view === "shift & counter") && (
+                  <th className="border px-4 py-2">Actions</th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -262,8 +266,11 @@ export default function UsersTable({
                     {view === "active" && (
                       <td className="border px-4 py-2">active</td>
                     )}
-                    {(view === "online" || view === "offline") && (
+                    {view === "online" && (
                       <td className="border px-4 py-2">online</td>
+                    )}
+                    {view === "offline" && (
+                      <td className="border px-4 py-2">offline</td>
                     )}
 
                     {loggedInUser === "supervisor" &&
@@ -284,11 +291,11 @@ export default function UsersTable({
                                   }))
                                 }
                               >
-                                <option value="morning">Morning</option>
-                                <option value="evening">Evening</option>
+                                <option value="shift 1">Shift 1</option>
+                                <option value="shift 2">Shift 2</option>
                               </select>
                             ) : (
-                              <span>{user.shift}</span>
+                              <span>{user.shift ?? "Not assigned"}</span>
                             )}
                           </td>
                           <td className="border px-4 py-2">
@@ -320,77 +327,77 @@ export default function UsersTable({
                                 ))}
                               </select>
                             ) : (
-                              <span>{user.counter}</span>
+                              <span>{user.counter ?? "Not assigned"}</span>
                             )}
                           </td>
-
-                          {/* This the the place were are */}
                         </>
                       )}
-                    <td className="border px-4 py-2">
-                      {view === "shift & counter" ? (
-                        editShiftAndCounter &&
-                        editShiftAndCounterId === user.id ? (
-                          showShiftAndCounterModel ? (
-                            <ShiftAndCounterModel
-                              userId={user.id}
-                              counter={shiftAndCounter.counter}
-                              shift={shiftAndCounter.shift}
-                              startDate={shiftAndCounter.startDate}
+                    {view !== "online" && view !== "offline" && (
+                      <td className="border px-4 py-2">
+                        {view === "shift & counter" ? (
+                          editShiftAndCounter &&
+                          editShiftAndCounterId === user.id ? (
+                            showShiftAndCounterModel ? (
+                              <ShiftAndCounterModel
+                                userId={user.id}
+                                counter={shiftAndCounter.counter}
+                                shift={shiftAndCounter.shift}
+                                role={type}
+                                setShowShiftAndCounterModel={
+                                  setShowShiftAndCounterModel
+                                }
+                                setEditShiftAndCounter={setEditShiftAndCounter}
+                              />
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setShowShiftAndCounterModel(true);
+                                }}
+                                className="!border-0 py-2 px-4 text-md bg-gray-50 hover:cursor-pointer hover:bg-green-100"
+                              >
+                                Apply
+                              </button>
+                            )
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setEditShiftAndCounter(true);
+                                setEditShiftAndCounterId(user.id);
+                              }}
+                              className="!border-0 py-2 px-4 text-md bg-gray-50 hover:cursor-pointer hover:bg-green-100"
+                            >
+                              Edit
+                            </button>
+                          )
+                        ) : view === "archive" ? (
+                          showArchiveModel && userArchivedId ? (
+                            <ArchiveModel
+                              userId={userArchivedId}
                               role={type}
-                              endDate={shiftAndCounter.endDate}
-                              setShowShiftAndCounterModel={
-                                setShowShiftAndCounterModel
-                              }
-                              setEditShiftAndCounter={setEditShiftAndCounter}
+                              status="activate"
+                              setShowArchiveModel={setShowArchiveModel}
+                              setUserArchivedId={setUserArchivedId}
                             />
                           ) : (
                             <button
                               onClick={() => {
-                                setShowShiftAndCounterModel(true);
+                                setShowArchiveModel(true),
+                                  setUserArchivedId(user.id);
                               }}
                               className="!border-0 py-2 px-4 text-md bg-gray-50 hover:cursor-pointer hover:bg-green-100"
                             >
-                              Apply
+                              Activate
                             </button>
                           )
                         ) : (
-                          <button
-                            onClick={() => {
-                              setEditShiftAndCounter(true);
-                              setEditShiftAndCounterId(user.id);
-                            }}
-                            className="!border-0 py-2 px-4 text-md bg-gray-50 hover:cursor-pointer hover:bg-green-100"
-                          >
-                            Edit
-                          </button>
-                        )
-                      ) : view === "archive" ? (
-                        showArchiveModel && userArchivedId ? (
-                          <ArchiveModel
-                            userId={userArchivedId}
-                            role={type}
-                            status="activate"
-                            setShowArchiveModel={setShowArchiveModel}
-                            setUserArchivedId={setUserArchivedId}
-                          />
-                        ) : (
-                          <button
-                            onClick={() => {
-                              setShowArchiveModel(true),
-                                setUserArchivedId(user.id);
-                            }}
-                            className="!border-0 py-2 px-4 text-md bg-gray-50 hover:cursor-pointer hover:bg-green-100"
-                          >
-                            Activate
-                          </button>
-                        )
-                      ) : (
-                        <ActionMenu userId={user.id} />
-                      )}
-                    </td>
+                          <ActionMenu userId={user.id} />
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))
+              ) : type === "attendant" ? (
+                <p>{`No billers found`}</p>
               ) : (
                 <p>{`No ${type} found`}</p>
               )}

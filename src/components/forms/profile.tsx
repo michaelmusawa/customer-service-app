@@ -3,7 +3,7 @@
 import { editUser } from "@/app/lib/action";
 import { useState } from "react";
 import { useFormStatus, useFormState } from "react-dom";
-import { User, UserState } from "@/app/lib/definitions";
+import { EditUserState, User } from "@/app/lib/definitions";
 import { AtSymbolIcon, KeyIcon } from "@heroicons/react/24/outline";
 import UserIcon from "../icons/userIcon";
 import Image from "next/image";
@@ -28,7 +28,7 @@ export default function ProfileForm({
   type: string;
 }) {
   function Edit() {
-    const initialState: UserState = {
+    const initialState: EditUserState = {
       message: null,
       errors: {},
       state_error: null,
@@ -40,7 +40,7 @@ export default function ProfileForm({
     const searchParams = useSearchParams();
     const resetPass = searchParams.get("resetPass");
 
-    if (editState.success === false) {
+    if (editState.state_error) {
       toast.error(editState.state_error);
     }
 
@@ -156,6 +156,7 @@ export default function ProfileForm({
                 defaultValue={""}
                 aria-describedby="password-error"
                 className="p-2 pl-8 my-6"
+                minLength={6}
               />
               <KeyIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
             </div>

@@ -8,66 +8,67 @@ import { fetchOnlineUsers, fetchUsers } from "@/app/lib/action";
 type Params = { role: string };
 type SearchParams = { [key: string]: string | string[] | undefined };
 
-export default async function Page({ params, searchParams }: { params: Params, searchParams: SearchParams }) {
+export default async function Page({
+  params,
+  searchParams,
+}: {
+  params: Params;
+  searchParams: SearchParams;
+}) {
   const session = await auth();
   const { role } = params;
   const id = searchParams.id as string | undefined;
   const success = searchParams.success as string | undefined;
 
-  if (!session){
-    return redirect('/login');
-  } else if (session?.user.role !== role){
-    return(
+  if (!session) {
+    return redirect("/login");
+  } else if (session?.user.role !== role) {
+    return (
       <div>
         <h1>You are not authorized to visit this page!</h1>
-        <Link
-        className="button" 
-          href='/login'>
+        <Link className="button" href="/login">
           Go to Login
         </Link>
       </div>
-    )
+    );
   }
 
-  let type: string = '';
-  if (role === 'admin'){
-     type = 'supervisor'
-  } else if ( role === 'supervisor'){
-    type = 'attendant'
+  let type: string = "";
+  if (role === "admin") {
+    type = "supervisor";
+  } else if (role === "supervisor") {
+    type = "attendant";
   }
 
   let users;
   const sessionUsers = await fetchOnlineUsers();
-  if (type === 'attendant'){
-    users = await fetchUsers('attendant')
-  } else if (type === 'supervisor'){
-    users = await fetchUsers('supervisor')
+  if (type === "attendant") {
+    users = await fetchUsers("attendant");
+  } else if (type === "supervisor") {
+    users = await fetchUsers("supervisor");
   }
 
-
-
-  const loggedInUser = session.user.role
+  const loggedInUser = session.user.role;
   return (
     <>
-    {!id ? (
-      <div>
-        <CreateUserPage 
-          loggedInUser={loggedInUser} 
-          type={type}
-          success= {success}
-        />
-    </div>
-    ):(
-    <div></div>
-  )}
-    <UsersTable 
-      type={type} 
-      users={users} 
-      onlineUsers = {sessionUsers}
-      loggedInUser={role}
-    />
-    
+      {!id ? (
+        <div>
+          <CreateUserPage
+            loggedInUser={loggedInUser}
+            type={type}
+            success={success}
+            label="Create biller"
+          />
+        </div>
+      ) : (
+        <div></div>
+      )}
+      <UsersTable
+        type={type}
+        users={users}
+        onlineUsers={sessionUsers}
+        loggedInUser={role}
+      />
     </>
-    
-  )
+  );
 }

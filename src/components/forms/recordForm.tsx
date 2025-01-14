@@ -1,10 +1,10 @@
 "use client";
 
-import { createRecord, editRecord, requestEditRecord } from "@/app/lib/action";
-import { RecordState } from "@/app/lib/definitions";
+import { createRecord, requestEditRecord } from "@/app/lib/action";
+import { EditRecordState, RecordState } from "@/app/lib/definitions";
 import { useFormState, useFormStatus } from "react-dom";
 import { Record } from "@/app/lib/definitions";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useState } from "react";
 import { CounterContext } from "../counterContext";
 import { Services } from "@/app/lib/data";
 import toast from "react-hot-toast";
@@ -48,7 +48,7 @@ export default function RecordForm({
   };
   const [state, formAction] = useFormState(createRecord, initialState);
 
-  const editFormState: RecordState = {
+  const editFormState: EditRecordState = {
     message: null,
     state_error: null,
     errors: {},
@@ -197,7 +197,7 @@ export default function RecordForm({
             className="border p-2 rounded w-full"
             required
           />
-          <label className="block text-sm font-medium">Name</label>
+          <label className="block text-sm font-medium">Customer name</label>
           <input
             type="text"
             name="name"

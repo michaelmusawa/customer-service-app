@@ -47,12 +47,17 @@ export default function Dashboard({
   return (
     <main>
       <div
-        className={`${lusitana.className} mb-4 text-white bg-gradient-to-r from-green-800 to-yellow-600 p-3 rounded-lg shadow-md`}
+        className={`${lusitana.className} mb-4 text-white bg-gradient-to-r from-countyGreen to-countyYellow p-3 rounded-lg shadow-md`}
       >
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">
-            {Capitalize(`${user} Dashboard`)}
-          </h1>
+          {user === "attendant" ? (
+            <h1 className="text-2xl font-bold">Biller Dashboard</h1>
+          ) : (
+            <h1 className="text-2xl font-bold">
+              {Capitalize(`${user} Dashboard`)}
+            </h1>
+          )}
+
           <div className="flex items-center text-sm font-semibold uppercase">
             <label htmlFor="analysisType" className="flex-1 mr-2">
               Analysis Type:

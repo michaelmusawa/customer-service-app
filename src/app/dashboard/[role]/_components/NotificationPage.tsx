@@ -4,19 +4,14 @@ import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import {
   EditedRecord,
+  Fields,
   Record,
-  RecordState,
+  RequestEditRecordState,
   User,
-  UserState,
 } from "@/app/lib/definitions";
-import {
-  FormatDate,
-  formatTime,
-  getCurrentTimeFormatted,
-} from "@/app/lib/data";
-import { editRequestEditRecord, shiftWarningAction } from "@/app/lib/action";
+import { FormatDate, formatTime } from "@/app/lib/data";
+import { editRequestEditRecord } from "@/app/lib/action";
 import { useFormState } from "react-dom";
-import Link from "next/link";
 import clsx from "clsx";
 import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
@@ -36,10 +31,10 @@ const NotificationPage: React.FC<NotificationProps> = ({
   sessionUserId,
   role,
 }) => {
-  const [notifications, setNotifications] = useState({
+  const notifications = {
     editRequests,
     attendants,
-  });
+  };
 
   const searchParams = useSearchParams();
   const edit = searchParams.get("edit");
@@ -80,16 +75,23 @@ const NotificationPage: React.FC<NotificationProps> = ({
         supervisorComment: "",
         reason: "",
         createAt: new Date(),
+        fields: [],
       }));
 
       toast.success("Changes effected successfully", {
-        id: "success-toast", // Assign a unique ID for the success message
+        id: "success-toast",
       });
       window.history.replaceState({}, document.title, window.location.pathname);
+
+      if (typeof window !== "undefined") {
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      }
     }
   }, [edit]);
 
-  const initialState: RecordState = {
+  const initialState: RequestEditRecordState = {
     response: null,
     message: null,
     errors: {},
@@ -102,6 +104,10 @@ const NotificationPage: React.FC<NotificationProps> = ({
     editRequestEditRecordById,
     initialState
   );
+
+  if (editState) {
+    if (editState.state_error) toast.error(editState.state_error);
+  }
 
   const handleViewEditedRecord = (editRecord: EditedRecord) => {
     setViewEditRequest((prevState) => ({
@@ -124,7 +130,7 @@ const NotificationPage: React.FC<NotificationProps> = ({
       );
 
       if (matchingRecord) {
-        const fieldsToUpdate: any = [];
+        const fieldsToUpdate: Fields[] = [];
 
         // Check if the 'Record type' field is different
         if (matchingRecord.recordType !== recordToEdit.recordType) {
@@ -181,8 +187,8 @@ const NotificationPage: React.FC<NotificationProps> = ({
           fieldsToUpdate.push({
             id: recordToEdit.id,
             fieldName: "Amount",
-            value: matchingRecord.value,
-            editedValue: recordToEdit.value,
+            value: matchingRecord.value.toString(),
+            editedValue: recordToEdit.value.toString(),
           });
         }
 
@@ -438,7 +444,14 @@ const NotificationPage: React.FC<NotificationProps> = ({
               <tbody>
                 {!notifications.editRequests ||
                 notifications.editRequests.length === 0 ? (
-                  <p className="text-gray-500">No edit requests available.</p>
+                  <tr>
+                    <td
+                      colSpan={role === "attendant" ? 8 : 7}
+                      className="text-center text-gray-500"
+                    >
+                      No edit requests available.
+                    </td>
+                  </tr>
                 ) : (
                   notifications.editRequests.map((editRequest, index) => (
                     <tr
@@ -457,7 +470,9 @@ const NotificationPage: React.FC<NotificationProps> = ({
                       <td className="border px-4 py-2">
                         {editRequest.recordNumber}
                       </td>
-                      <td className="border px-4 py-2">{editRequest.value}</td>
+                      <td className="border px-4 py-2">
+                        {editRequest.value.toLocaleString("en-US")}
+                      </td>
                       {role === "attendant" && (
                         <>
                           <th

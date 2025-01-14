@@ -1,7 +1,7 @@
 "use client";
 
 import { editUser } from "@/app/lib/action";
-import { User, UserState } from "@/app/lib/definitions";
+import { EditUserState, User } from "@/app/lib/definitions";
 import UserForm from "@/components/forms/form";
 import React, { useEffect, useState } from "react";
 import { useFormState } from "react-dom";
@@ -11,19 +11,25 @@ export default function EditUserPage({
   user,
   type,
   loggedInUser,
+  label,
 }: {
   loggedInUser: string;
   type: string;
   user: User | undefined;
+  label: string;
 }) {
-  const initialState: UserState = { message: null, errors: {} };
+  const initialState: EditUserState = {
+    message: null,
+    state_error: null,
+    success: null,
+    errors: {},
+  };
   const editUserById = editUser.bind(null, user?.id ?? "");
   const [state, formAction] = useFormState(editUserById, initialState);
 
   const [toastShown, setToastShown] = useState(false);
 
   useEffect(() => {
-    console.log("This state 1", state);
     if (state && !toastShown) {
       if (state.message && state.success) {
         toast.success(state.message);
@@ -42,7 +48,6 @@ export default function EditUserPage({
         }
       }
     }
-    console.log("This state 2", state);
   }, [state, toastShown]);
 
   return (
@@ -50,7 +55,7 @@ export default function EditUserPage({
       <form action={formAction}>
         <UserForm
           type={type}
-          label={`Update ${type}`}
+          label={label}
           user={user}
           loggedInUser={loggedInUser}
         />

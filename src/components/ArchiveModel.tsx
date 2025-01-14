@@ -1,5 +1,5 @@
 import { archiveUser } from "@/app/lib/action";
-import { UserState } from "@/app/lib/definitions";
+import { ArchiveUserState } from "@/app/lib/definitions";
 import React, { useEffect } from "react";
 import { useFormState } from "react-dom";
 import toast from "react-hot-toast";
@@ -17,7 +17,11 @@ export default function ArchiveModel({
   setShowArchiveModel: (value: boolean) => void;
   setUserArchivedId: (value: string) => void;
 }) {
-  const initialState: UserState = { response: null, message: null, errors: {} };
+  const initialState: ArchiveUserState = {
+    response: null,
+    message: null,
+    errors: {},
+  };
   const archiveUserById = archiveUser.bind(null, userId);
   const [state, formAction] = useFormState(archiveUserById, initialState);
 

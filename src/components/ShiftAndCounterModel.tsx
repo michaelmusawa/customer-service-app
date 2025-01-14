@@ -1,7 +1,7 @@
 "use client";
 
 import { assignShiftAndCounter } from "@/app/lib/action";
-import { UserState } from "@/app/lib/definitions";
+import { ShiftAndCounterState } from "@/app/lib/definitions";
 import { useRouter, useSearchParams } from "next/navigation";
 import React from "react";
 import { useFormState } from "react-dom";
@@ -11,8 +11,6 @@ export default function ShiftAndCounterModel({
   userId,
   counter,
   shift,
-  startDate,
-  endDate,
   role,
   setShowShiftAndCounterModel,
   setEditShiftAndCounter,
@@ -20,16 +18,15 @@ export default function ShiftAndCounterModel({
   userId: string;
   counter: number;
   shift: string;
-  startDate: Date;
-  endDate: Date;
   role: string;
   setShowShiftAndCounterModel: (value: boolean) => void;
   setEditShiftAndCounter: (value: boolean) => void;
 }) {
-  const initialState: UserState = {
+  const initialState: ShiftAndCounterState = {
     state_error: null,
     message: null,
     errors: {},
+    response: null,
   };
   const assignShiftAndCounterById = assignShiftAndCounter.bind(null, userId);
   const [state, formAction] = useFormState(
@@ -78,12 +75,6 @@ export default function ShiftAndCounterModel({
             <input type="hidden" name="counter" value={counter} />
             <input type="hidden" name="role" value={role} />
             <input type="hidden" name="shift" value={shift} />
-            <input
-              type="hidden"
-              name="startDate"
-              defaultValue={`${startDate}`}
-            />
-            <input type="hidden" name="endDate" defaultValue={`${endDate}`} />
 
             {id ? (
               <button

@@ -11,9 +11,15 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        countyGreen: {
+          DEFAULT: "var(--countyGreen)",
+        },
+        countyYellow: {
+          DEFAULT: "var(--countyYellow)",
+        },
       },
-      fontFamily : {
-        sans: ['var(--font-inter)', 'var(--font-lusitana)'],
+      fontFamily: {
+        sans: ["var(--font-inter)", "var(--font-lusitana)"],
       },
     },
   },

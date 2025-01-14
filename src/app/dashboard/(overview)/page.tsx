@@ -16,6 +16,7 @@ import {
 import Dashboard from "./Dashboard";
 
 export type GroupedByMonth = {
+  type: "month";
   month: string;
   records: GroupedRecord[];
   totalValue: number;
@@ -37,9 +38,13 @@ export default async function Page() {
     return redirect(`/dashboard/${user?.role}/profile?resetPass=true`);
   }
 
-  const monthlyGroupedRecords = await fetchMonthlyGroupedRecords();
-  const weeklyGroupedRecords = await fetchWeeklyGroupedRecords();
-  const dailyGroupedRecords = await fetchDailyGroupedRecords();
+  const [monthlyGroupedRecords, weeklyGroupedRecords, dailyGroupedRecords] =
+    await Promise.all([
+      fetchMonthlyGroupedRecords(),
+      fetchWeeklyGroupedRecords(),
+      fetchDailyGroupedRecords(),
+    ]);
+
   const monthlyRecords = groupRecordsByMonth(monthlyGroupedRecords);
   const dailyRecords = groupRecordsByDay(dailyGroupedRecords);
   const weeklyRecords = groupRecordsByWeek(weeklyGroupedRecords);

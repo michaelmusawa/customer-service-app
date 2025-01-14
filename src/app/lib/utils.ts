@@ -137,7 +137,29 @@ export function getPendingRecordIds(
   return recordIds;
 }
 
+export function getEditedRecordIds(
+  records: Record[],
+  editedRecords: EditedRecord[]
+): string[] {
+  // Filter EditedRecord for those with status === 'pending'
+  const pendingEditedRecords = editedRecords.filter(
+    (editedRecord) => editedRecord.status !== "pending"
+  );
+
+  // Extract recordIds of the matching records
+  const recordIds = records
+    .filter((record) =>
+      pendingEditedRecords.some(
+        (editedRecord) => editedRecord.recordId === record.recordId
+      )
+    )
+    .map((record) => record.recordId);
+
+  return recordIds;
+}
+
 export type GroupedByWeek = {
+  type: "week";
   week: string;
   records: GroupedRecord[];
   totalValue: number;
@@ -162,6 +184,7 @@ export function groupRecordsByWeek(
   });
 
   return Object.keys(groupedByWeek).map((week) => ({
+    type: "week",
     week,
     records: groupedByWeek[week].records,
     totalValue: groupedByWeek[week].totalValue,
@@ -187,6 +210,7 @@ export function groupRecordsByMonth(
   });
 
   return Object.keys(groupedByMonth).map((month) => ({
+    type: "month",
     month,
     records: groupedByMonth[month].records,
     totalValue: groupedByMonth[month].totalValue,
@@ -194,6 +218,7 @@ export function groupRecordsByMonth(
 }
 
 export type GroupedByDay = {
+  type: "day";
   date: string;
   records: GroupedRecord[];
   totalValue: number;
@@ -218,6 +243,7 @@ export function groupRecordsByDay(
   });
 
   return Object.keys(groupedByDay).map((date) => ({
+    type: "day",
     date,
     records: groupedByDay[date].records,
     totalValue: groupedByDay[date].totalValue,
@@ -256,9 +282,18 @@ export function filterRecordsByTimeRange(
   );
 }
 
+type Accumulator = {
+  [userName: string]: {
+    Name: string;
+    numberOfTickets: number;
+    value: number;
+    shiftCounts: { [shift: string]: number };
+  };
+};
+
 export function groupRecordsByUserName(records: Record[]) {
   return Object.values(
-    records.reduce((acc, record) => {
+    records.reduce<Accumulator>((acc, record) => {
       const { userName, value, shift } = record;
 
       if (!acc[userName]) {

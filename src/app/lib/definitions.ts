@@ -76,12 +76,45 @@ export type RecordState = {
   errors?: {
     name?: string[];
     ticketNumber?: string[];
+    recordType?: string[];
     value?: string[];
-    invoice?: string[];
+    service?: string[];
+    subService?: string[];
+    recordNumber?: string[];
+    shift?: string[];
+    counter?: string[];
+    userId?: string[];
+  };
+  state_error?: string | null;
+  message?: string | null;
+  response?: string | null;
+};
+
+export type EditRecordState = {
+  errors?: {
+    name?: string[];
+    ticketNumber?: string[];
+    value?: string[];
     service?: string[];
     subService?: string[];
     shift?: string[];
     userId?: string[];
+    recordType?: string[];
+    recordNumber?: string[];
+    counter?: string[];
+    recordId?: string[];
+    attendantComment?: string[];
+  };
+  state_error?: string | null;
+  message?: string | null;
+  response?: string | null;
+};
+
+export type RequestEditRecordState = {
+  errors?: {
+    supervisorId?: string[];
+    supervisorComment?: string[];
+    status?: string[];
   };
   state_error?: string | null;
   message?: string | null;
@@ -103,4 +136,58 @@ export type UserState = {
   state_error?: string | null;
   message?: string | null;
   success?: boolean | null;
+};
+
+export type ShiftAndCounterState = {
+  errors?: {
+    role?: string[];
+    shift?: string[];
+    counter?: string[];
+  };
+  state_error?: string | null;
+  message?: string | null;
+  response?: string | null;
+};
+
+export type ArchiveUserState = {
+  errors?: {
+    status?: string[];
+    role?: string[];
+  };
+  state_error?: string | null;
+  message?: string | null;
+  success?: boolean | null;
+  response?: string | null;
+};
+
+export type EditUserState = {
+  errors?: {
+    email?: string[];
+    password?: string[];
+    name?: string[];
+    role?: string[];
+    image?: string[];
+    resetPass?: string[];
+  };
+  state_error?: string | null;
+  message?: string | null;
+  success?: boolean | null;
+};
+
+export type CreateUserState = {
+  errors?: {
+    email?: string[];
+    password?: string[];
+    name?: string[];
+    role?: string[];
+  };
+  state_error?: string | null;
+  message?: string | null;
+};
+
+export type Fields = {
+  id: string;
+  fieldName: string;
+  value: string;
+  editedValue: string;
 };

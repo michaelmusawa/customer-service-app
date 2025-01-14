@@ -4,16 +4,20 @@ import { redirect } from "next/navigation";
 import { auth, signIn, signOut } from "../../../auth";
 import { AuthError } from "next-auth";
 import {
-  EditedRecord,
+  ArchiveUserState,
+  CreateUserState,
+  EditRecordState,
+  EditUserState,
   GroupedRecord,
   OnlineUser,
-  Record,
   RecordState,
+  RequestEditRecordState,
+  ShiftAndCounterState,
   User,
-  UserState,
 } from "./definitions";
 import { z } from "zod";
-import pool from "./db";
+import poolPromise from "./db";
+import sql from "mssql";
 import bcrypt from "bcrypt";
 import { revalidatePath } from "next/cache";
 import fs from "fs/promises";
@@ -21,10 +25,18 @@ import cron from "node-cron";
 
 cron.schedule("0 * * * *", async () => {
   try {
-    await pool.query(
-      'DELETE FROM "ShiftNotification" WHERE "expires" <= NOW()'
-    );
-    await pool.query('DELETE FROM "Session" WHERE "expires" <= NOW()');
+    const pool = await poolPromise; // Await the pool connection
+
+    // Deleting expired ShiftNotification records
+    await pool.request().query(`
+      DELETE FROM [ShiftNotification] WHERE [expires] <= GETDATE()
+    `);
+
+    // Deleting expired Session records
+    await pool.request().query(`
+      DELETE FROM [Session] WHERE [expires] <= GETDATE()
+    `);
+
     console.log("Expired records deleted");
   } catch (err) {
     console.error("Error deleting expired records:", err);
@@ -65,40 +77,42 @@ export async function authenticate(_currentState: unknown, formData: FormData) {
 }
 
 export async function signUserOut() {
-  const session = await auth();
+  const session = await auth(); // Retrieve user session
   const userId = session?.user.id;
 
   if (userId) {
     try {
-      await pool.query(
-        `
-        DELETE FROM "Session"
-        WHERE "userId" = $1
-        `,
-        [userId]
-      );
+      const pool = await poolPromise; // Await the pool connection
 
+      // Delete session from the database
+      await pool.request().input("userId", sql.VarChar, userId) // Use parameterized query to prevent SQL injection
+        .query(`
+          DELETE FROM [Session]
+          WHERE [userId] = @userId
+        `);
+
+      // Sign the user out
       await signOut();
     } catch (e) {
       console.error("Something went wrong deleting record!", e);
     }
   }
 
+  // Redirect to the login page after signing out
   redirect("/login");
 }
 
 export async function fetchUsers(user: string) {
   try {
-    const res = await pool.query<User>(
-      `
-      SELECT * FROM "User"
-      WHERE role = $1
-      ORDER BY "name" ASC
-      `,
-      [user]
-    );
+    const pool = await poolPromise; // Ensure the pool is connected
+    const result = await pool.request().input("role", sql.VarChar, user) // Sanitize the user input and avoid SQL injection
+      .query(`
+        SELECT * FROM [User]
+        WHERE role = @role
+        ORDER BY [name] ASC
+      `);
 
-    const users = res.rows;
+    const users = result.recordset; // The result is stored in `recordset`
     if (users.length > 0) {
       return users;
     }
@@ -107,18 +121,93 @@ export async function fetchUsers(user: string) {
   }
 }
 
-export async function fetchOnlineUsers() {
+export async function fetchOnlineUsers(): Promise<OnlineUser[] | undefined> {
   try {
-    const res = await pool.query<OnlineUser>(`
-      SELECT * FROM "Session"
-      `);
-    const users = res.rows;
+    // Await the pool connection
+    const pool = await poolPromise;
+
+    // Execute query to fetch online users from the "Session" table
+    const result = await pool.request().query(`
+      SELECT * FROM [Session]
+    `);
+
+    // Access users from the result's recordset
+    const users = result.recordset;
+
     if (users.length > 0) {
-      return users;
-    } else [];
+      return users; // Return the list of online users
+    } else {
+      return []; // Return an empty array if no users found
+    }
   } catch (error) {
     console.error("Something went wrong fetching online users", error);
+    throw new Error("Failed to fetch online users.");
   }
+}
+
+const CreateUserFormSchema = z.object({
+  name: z.string(),
+  email: z.string({
+    invalid_type_error: "Please enter a valid email",
+  }),
+  password: z.string(),
+  role: z.string(),
+});
+
+export async function createUser(
+  prevState: CreateUserState,
+  formData: FormData
+): Promise<CreateUserState> {
+  const validatedFields = CreateUserFormSchema.safeParse({
+    name: formData.get("name"),
+    email: formData.get("email"),
+    password: formData.get("password"),
+    role: formData.get("role"),
+  });
+
+  if (!validatedFields.success) {
+    return {
+      ...prevState,
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: "Missing Fields. Failed to Create user.",
+    };
+  }
+
+  const { name, email, password, role } = validatedFields.data;
+  const hashedPass = bcrypt.hashSync(password || email, bcrypt.genSaltSync(10));
+  const id = crypto.randomUUID();
+  const session = await auth();
+  const userRole =
+    email === "supersupervisor@gmail.com" ? "supersupervisor" : role;
+
+  try {
+    const pool = await poolPromise; // Await the pool connection
+
+    // Insert user data into the database using parameterized queries
+    await pool
+      .request()
+      .input("id", sql.VarChar, id) // Input parameters
+      .input("name", sql.VarChar, name)
+      .input("email", sql.VarChar, email)
+      .input("password", sql.VarChar, hashedPass)
+      .input("role", sql.VarChar, userRole).query(`
+        INSERT INTO [User] (id, name, email, password, role)
+        VALUES (@id, @name, @email, @password, @role)
+      `);
+    revalidatePath(`/dashboard/${session?.user.role}/${role}s/create`);
+    return {
+      ...prevState,
+      message: `Added ${role} successfully.`,
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      ...prevState,
+      state_error: `Something went wrong! Failed to create ${role}.`,
+    };
+  }
+
+  // Revalidate the path after successful insertion
 }
 
 const FormSchema = z.object({
@@ -132,69 +221,9 @@ const FormSchema = z.object({
   resetPass: z.string().nullable().optional(),
 });
 
-export async function createUser(prevState: UserState, formData: FormData) {
-  const validatedFields = FormSchema.safeParse({
-    name: formData.get("name"),
-    email: formData.get("email"),
-    password: formData.get("password"),
-    role: formData.get("role"),
-  });
-
-  if (!validatedFields.success) {
-    return {
-      errors: validatedFields.error.flatten().fieldErrors,
-      message: "Missing Fields. Failed to Create user.",
-    };
-  }
-
-  const { name, email, password, role } = validatedFields.data;
-  let userPassword = "";
-  if (password === "") {
-    userPassword = email;
-  } else {
-    userPassword = password;
-  }
-  const salt = bcrypt.genSaltSync(10);
-  const pass = userPassword;
-  const hashedPass = bcrypt.hashSync(pass, salt);
-  const id = crypto.randomUUID();
-  const session = await auth();
-
-  let userRole;
-
-  if (email === "supersupervisor@gmail.com") {
-    userRole = "supersupervisor";
-  } else {
-    userRole = role;
-  }
-
-  try {
-    await pool.query(
-      `
-            INSERT INTO "User" (id, name, email, password, role)
-            VALUES ($1, $2, $3, $4, $5)
-            `,
-      [id, name, email, hashedPass, userRole]
-    );
-
-    revalidatePath(`/dashboard/${session?.user.role}/${role}s/create`);
-
-    return {
-      message: `Added ${role} successfully`,
-      response: "ok",
-    };
-  } catch (error) {
-    console.error(error);
-    return {
-      state_error: `Something went wrong! Failed to create ${role}.`,
-      response: "!ok",
-    };
-  }
-}
-
 export async function editUser(
   id: string,
-  prevState: UserState,
+  prevState: EditUserState,
   formData: FormData
 ) {
   const validatedFields = FormSchema.safeParse({
@@ -207,8 +236,8 @@ export async function editUser(
   });
 
   if (!validatedFields.success) {
-    console.log(validatedFields.error.flatten().fieldErrors);
     return {
+      ...prevState,
       errors: validatedFields.error.flatten().fieldErrors,
       message: "Missing Fields. Failed to Edit user.",
     };
@@ -227,15 +256,15 @@ export async function editUser(
   }
 
   try {
-    const res = await pool.query<User>(
-      `
-      SELECT * FROM "User" WHERE id = $1`,
-      [id]
-    );
+    const pool = await poolPromise;
+    const result = await pool.request().input("id", sql.VarChar, id) // Bind the 'id' parameter
+      .query(`
+      SELECT * FROM [User] WHERE id = @id
+    `);
 
     // Logic for password
 
-    const existingUser = res.rows[0];
+    const existingUser = result.recordset[0];
 
     if (existingUser.id === session?.user.id) {
       hashedPass = password ? generateHash(password) : existingUser.password;
@@ -266,24 +295,29 @@ export async function editUser(
       imagePath = existingUser.image;
     }
 
-    await pool.query(
-      `
-      UPDATE "User"
+    await pool
+      .request()
+      .input("name", sql.VarChar, name)
+      .input("email", sql.VarChar, email)
+      .input("password", sql.VarChar, hashedPass)
+      .input("role", sql.VarChar, role)
+      .input("image", sql.VarChar, imagePath)
+      .input("id", sql.VarChar, id).query(`
+      UPDATE [User]
       SET
-        name = $1,
-        email = $2,
-        password = $3,
-        role = $4,
-        image = $5
-        WHERE id = $6
-        `,
-      [name, email, hashedPass, role, imagePath, id]
-    );
+        name = @name,
+        email = @email,
+        password = @password,
+        role = @role,
+        image = @image
+      WHERE id = @id
+    `);
 
     revalidatePath(`/dashboard/${session?.user.role}/${role}s/create`);
   } catch (error) {
     console.error("Error updating user:", error);
     return {
+      ...prevState,
       state_error: "Error updating user.",
       success: false,
     };
@@ -314,7 +348,7 @@ const ArchiveUserSchema = z.object({
 
 export async function archiveUser(
   id: string,
-  prevState: UserState,
+  prevState: ArchiveUserState,
   formData: FormData
 ) {
   const validatedFields = ArchiveUserSchema.safeParse({
@@ -324,6 +358,7 @@ export async function archiveUser(
 
   if (!validatedFields.success) {
     return {
+      ...prevState,
       errors: validatedFields.error.flatten().fieldErrors,
       message: "Missing Fields. Failed to archive user.",
     };
@@ -341,18 +376,23 @@ export async function archiveUser(
   }
 
   try {
-    await pool.query(
-      `
-      UPDATE "User"
+    const pool = await poolPromise;
+    await pool
+      .request()
+      .input("id", sql.VarChar, id)
+      .input("status", sql.VarChar, userStatus)
+      .query(
+        `
+      UPDATE [User]
       SET
-        status = $1
-        WHERE id = $2
-        `,
-      [userStatus, id]
-    );
+        status = @status
+        WHERE id = @id
+        `
+      );
   } catch (error) {
     console.error("Something went wrong", error);
     return {
+      ...prevState,
       state_error: "Error in the processing your request",
       response: "!ok",
     };
@@ -364,155 +404,179 @@ export async function archiveUser(
 const ShiftAndCounterUserSchema = z.object({
   counter: z.coerce.number(),
   shift: z.string(),
-  startDate: z.string(),
-  endDate: z.string(),
   role: z.string(),
 });
 
 export async function assignShiftAndCounter(
   id: string,
-  prevState: UserState,
+  prevState: ShiftAndCounterState,
   formData: FormData
 ) {
   const validatedFields = ShiftAndCounterUserSchema.safeParse({
     counter: formData.get("counter"),
     shift: formData.get("shift"),
-    startDate: formData.get("startDate"),
-    endDate: formData.get("endDate"),
     role: formData.get("role"),
   });
 
   if (!validatedFields.success) {
     return {
+      ...prevState,
       errors: validatedFields.error.flatten().fieldErrors,
       message: "Missing Fields. Failed to archive user.",
     };
   }
 
-  const { counter, shift, startDate, endDate, role } = validatedFields.data;
-
-  const shiftStartDate = new Date(startDate);
-  const shiftEndDate = new Date(endDate);
+  const { counter, shift, role } = validatedFields.data;
 
   const session = await auth();
 
   try {
-    await pool.query(
-      `
-      UPDATE "User"
+    const pool = await poolPromise;
+    await pool
+      .request()
+      .input("id", sql.VarChar, id)
+      .input("counter", sql.Int, counter)
+      .input("shift", sql.VarChar, shift)
+      .query(
+        `
+      UPDATE [User]
       SET
-        counter = $1,
-        shift = $2,
-        "shiftStartDate" = $3,
-        "shiftEndDate" = $4
-        WHERE id = $5
-        `,
-      [counter, shift, shiftStartDate, shiftEndDate, id]
-    );
+        counter = @counter,
+        shift = @shift
+        WHERE id = @id
+        `
+      );
 
     revalidatePath(`/dashboard/${session?.user.role}/${role}s/create`);
     return {
+      ...prevState,
       message: "Shift updated successfully",
       response: "ok",
     };
   } catch (error) {
     console.error("Something went wrong updating user shift", error);
     return {
+      ...prevState,
       state_error: "Error updating user shift",
       response: "!ok",
     };
   }
 }
 
-const ShiftWarningActionSchema = z.object({
-  attendantId: z.string(),
-  dismiss: z.string(),
-});
+// const ShiftWarningActionSchema = z.object({
+//   attendantId: z.string(),
+//   dismiss: z.string(),
+// });
 
-export async function shiftWarningAction(
-  prevState: UserState,
-  formData: FormData
-) {
-  const validatedFields = ShiftWarningActionSchema.safeParse({
-    attendantId: formData.get("attendantId"),
-    dismiss: formData.get("dismiss"),
-  });
+// export async function shiftWarningAction(
+//   prevState: UserState,
+//   formData: FormData
+// ) {
+//   const validatedFields = ShiftWarningActionSchema.safeParse({
+//     attendantId: formData.get("attendantId"),
+//     dismiss: formData.get("dismiss"),
+//   });
 
-  if (!validatedFields.success) {
-    return {
-      errors: validatedFields.error.flatten().fieldErrors,
-      message: "Missing Fields. Failed to archive user.",
-    };
-  }
+//   if (!validatedFields.success) {
+//     return {
+//       errors: validatedFields.error.flatten().fieldErrors,
+//       message: "Missing Fields. Failed to archive user.",
+//     };
+//   }
 
-  const { attendantId, dismiss } = validatedFields.data;
+//   const { attendantId, dismiss } = validatedFields.data;
 
-  const session = await auth();
-  const supervisorId = session?.user.id;
-  const id = crypto.randomUUID();
-  const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+//   const session = await auth();
+//   const supervisorId = session?.user.id;
+//   const id = crypto.randomUUID();
+//   const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-  try {
-    await pool.query(
-      `
-      INSERT INTO "ShiftNotification"
-      ("id", "attendantId", "supervisorId", "dismiss", "expires" )
-      VALUES ($1, $2, $3, $4, $5)
-      `,
-      [id, attendantId, supervisorId, dismiss, expires]
-    );
-  } catch (error) {
-    console.error("Something went wrong creating shift action", error);
-    return {
-      state_error: "Error creating shift action",
-      response: "!ok",
-    };
-  }
-}
+//   try {
+//     await pool.query(
+//       `
+//       INSERT INTO "ShiftNotification"
+//       ("id", "attendantId", "supervisorId", "dismiss", "expires" )
+//       VALUES ($1, $2, $3, $4, $5)
+//       `,
+//       [id, attendantId, supervisorId, dismiss, expires]
+//     );
+//   } catch (error) {
+//     console.error("Something went wrong creating shift action", error);
+//     return {
+//       state_error: "Error creating shift action",
+//       response: "!ok",
+//     };
+//   }
+// }
 
 export async function getUser(email: string): Promise<User | undefined> {
   try {
-    const res = await pool.query<User>(`
-      SELECT * FROM "User" 
-      WHERE email='${email}'
-      ORDER BY "createdAt" DESC
+    // Await the pool connection
+    const pool = await poolPromise;
+
+    // Execute the query to fetch the user by email
+    const result = await pool.request().input("email", sql.VarChar, email) // Use parameterized query to prevent SQL injection
+      .query(`
+        SELECT * FROM [User]
+        WHERE email = @email
+        ORDER BY [createdAt] DESC
       `);
-    return res.rows[0];
+
+    // Access the first user from the result's recordset
+    const user = result.recordset[0];
+
+    return user; // Return the user or undefined if not found
   } catch (error) {
     console.error("Failed to fetch user:", error);
     throw new Error("Failed to fetch user.");
   }
 }
+
+// export async function getUserById(id: string): Promise<User | undefined> {
+//   try {
+//     const res = await pool.query<User>(`
+//       SELECT * FROM "User"
+//       WHERE id='${id}'
+//       `);
+//     return res.rows[0];
+//   } catch (error) {
+//     console.error("Failed to fetch user:", error);
+//     throw new Error("Failed to fetch user.");
+//   }
+// }
 
 export async function getUserById(id: string): Promise<User | undefined> {
   try {
-    const res = await pool.query<User>(`
-      SELECT * FROM "User" 
-      WHERE id='${id}'
+    const pool = await poolPromise;
+    const result = await pool.request().input("id", sql.VarChar, id).query(`
+        SELECT * FROM [User] 
+        WHERE id = @id
       `);
-    return res.rows[0];
+    const user = result.recordset[0];
+
+    return user;
   } catch (error) {
     console.error("Failed to fetch user:", error);
     throw new Error("Failed to fetch user.");
   }
 }
 
-export async function deleteUser(id: string) {
-  try {
-    await pool.query(
-      `
-      DELETE FROM "User"
-      WHERE "id" = $1
-      `,
-      [id]
-    );
-    revalidatePath("/admin");
-  } catch (e) {
-    console.error("Something went wrong deleting user!", e);
-  }
-}
+// export async function deleteUser(id: string) {
+//   try {
+//     await pool.query(
+//       `
+//       DELETE FROM "User"
+//       WHERE "id" = $1
+//       `,
+//       [id]
+//     );
+//     revalidatePath("/admin");
+//   } catch (e) {
+//     console.error("Something went wrong deleting user!", e);
+//   }
+// }
 
-const RecordSchema = z.object({
+const CreateRecordSchema = z.object({
   name: z.string(),
   ticketNumber: z.string(),
   recordNumber: z.string(),
@@ -523,13 +587,10 @@ const RecordSchema = z.object({
   counter: z.string(),
   shift: z.string(),
   userId: z.string(),
-  recordId: z.string().optional(),
-  attendantComment: z.string().optional(),
-  supervisorComment: z.string().optional(),
 });
 
 export async function createRecord(prevState: RecordState, formData: FormData) {
-  const validatedFields = RecordSchema.safeParse({
+  const validatedFields = CreateRecordSchema.safeParse({
     ticketNumber: formData.get("ticketNumber"),
     recordType: formData.get("recordType"),
     name: formData.get("name"),
@@ -544,6 +605,7 @@ export async function createRecord(prevState: RecordState, formData: FormData) {
 
   if (!validatedFields.success) {
     return {
+      ...prevState,
       errors: validatedFields.error.flatten().fieldErrors,
       message: "Missing Fields. Failed to Edit Record.",
     };
@@ -566,42 +628,66 @@ export async function createRecord(prevState: RecordState, formData: FormData) {
   const session = await auth();
 
   try {
-    await pool.query(
-      `
-            INSERT INTO "Record" (id, name, "ticket", value, shift, service, "recordNumber", counter, "userId", "subService", "recordType")
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-            `,
-      [
-        id,
-        name,
-        ticketNumber,
-        value,
-        shift,
-        service,
-        recordNumber,
-        counter,
-        userId,
-        subService,
-        recordType,
-      ]
-    );
+    const pool = await poolPromise; // Await the pool connection
 
+    // Use parameterized query to insert the record
+    await pool
+      .request()
+      .input("id", sql.NVarChar, id)
+      .input("name", sql.NVarChar, name)
+      .input("ticketNumber", sql.NVarChar, ticketNumber)
+      .input("value", sql.Float, value)
+      .input("shift", sql.NVarChar, shift)
+      .input("service", sql.NVarChar, service)
+      .input("recordNumber", sql.NVarChar, recordNumber)
+      .input("counter", sql.Int, counter)
+      .input("userId", sql.NVarChar, userId)
+      .input("subService", sql.NVarChar, subService)
+      .input("recordType", sql.NVarChar, recordType)
+      .query(
+        `
+          INSERT INTO Record (id, name, ticket, value, shift, service, recordNumber, counter, userId, subService, recordType)
+          VALUES (@id, @name, @ticketNumber, @value, @shift, @service, @recordNumber, @counter, @userId, @subService, @recordType)
+        `
+      );
+
+    // Assuming `revalidatePath` is a function for revalidating the path for the dashboard
     revalidatePath(`/dashboard/${session?.user.role}/records/create`);
+
     return {
+      ...prevState,
       message: "Record created successfully",
       response: "ok",
     };
   } catch (e) {
-    console.log(e);
-    return { state_error: "Something went wrong! Failed to create record." };
+    console.error(e);
+    return {
+      ...prevState,
+      state_error: "Something went wrong! Failed to create record.",
+    };
   }
 }
 
+const EditRecordSchema = z.object({
+  name: z.string(),
+  ticketNumber: z.string(),
+  recordNumber: z.string(),
+  recordType: z.string(),
+  service: z.string(),
+  subService: z.string(),
+  value: z.coerce.number(),
+  counter: z.string(),
+  shift: z.string(),
+  userId: z.string(),
+  recordId: z.string().optional(),
+  attendantComment: z.string().optional(),
+});
+
 export async function requestEditRecord(
-  prevState: RecordState,
+  prevState: EditRecordState,
   formData: FormData
 ) {
-  const validatedFields = RecordSchema.safeParse({
+  const validatedFields = EditRecordSchema.safeParse({
     ticketNumber: formData.get("ticketNumber"),
     recordType: formData.get("recordType"),
     name: formData.get("name"),
@@ -618,6 +704,7 @@ export async function requestEditRecord(
 
   if (!validatedFields.success) {
     return {
+      ...prevState,
       errors: validatedFields.error.flatten().fieldErrors,
       message: "Missing Fields. Failed to validate record values.",
     };
@@ -642,43 +729,77 @@ export async function requestEditRecord(
   const session = await auth();
 
   try {
-    await pool.query(
-      `
-            INSERT INTO "EditedRecord" (id, name, "ticket", value, shift, service, "recordNumber", counter, "attendantId", "subService", "recordType", "recordId", status, "attendantComment")
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-            `,
-      [
-        id,
-        name,
-        ticketNumber,
-        value,
-        shift,
-        service,
-        recordNumber,
-        counter,
-        userId,
-        subService,
-        recordType,
-        recordId,
-        "pending",
-        attendantComment,
-      ]
-    );
+    const pool = await poolPromise; // Await the pool connection
 
+    //check if the record had previously been requested for edit
+
+    const result = await pool
+      .request()
+      .input("recordId", sql.VarChar, recordId) // Define the input parameter type and value
+      .query(`SELECT COUNT(*) AS count FROM EditedRecord WHERE id = @recordId`);
+
+    const recordExists = result.recordset[0].count > 0;
+
+    if (recordExists) {
+      return { state_error: "Can not edit! The record was already edited" };
+    } else {
+      // Use parameterized query to insert the edited record
+      await pool
+        .request()
+        .input("id", sql.NVarChar, id)
+        .input("name", sql.NVarChar, name)
+        .input("ticketNumber", sql.NVarChar, ticketNumber)
+        .input("value", sql.Float, value)
+        .input("shift", sql.NVarChar, shift)
+        .input("service", sql.NVarChar, service)
+        .input("recordNumber", sql.NVarChar, recordNumber)
+        .input("counter", sql.Int, counter)
+        .input("userId", sql.NVarChar, userId)
+        .input("subService", sql.NVarChar, subService)
+        .input("recordType", sql.NVarChar, recordType)
+        .input("recordId", sql.NVarChar, recordId)
+        .input("status", sql.NVarChar, "pending")
+        .input("attendantComment", sql.NVarChar, attendantComment)
+        .query(
+          `
+          INSERT INTO EditedRecord (id, name, ticket, value, shift, service, recordNumber, counter, attendantId, subService, recordType, recordId, status, attendantComment)
+          VALUES (@id, @name, @ticketNumber, @value, @shift, @service, @recordNumber, @counter, @userId, @subService, @recordType, @recordId, @status, @attendantComment)
+        `
+        );
+    }
+
+    // Assuming `revalidatePath` is a function for revalidating the path for the dashboard
     revalidatePath(`/dashboard/${session?.user.role}/records/create`);
   } catch (e) {
-    console.log(e);
-    return { state_error: "Something went wrong! Failed to send request." };
+    console.error(e);
+    return {
+      ...prevState,
+      state_error: "Something went wrong! Failed to send request.",
+    };
   }
   redirect(`/dashboard/${session?.user.role}/records?edit=true`);
 }
+
+const EditRecord = z.object({
+  name: z.string(),
+  ticketNumber: z.string(),
+  recordNumber: z.string(),
+  recordType: z.string(),
+  service: z.string(),
+  subService: z.string(),
+  value: z.coerce.number(),
+  counter: z.string(),
+  shift: z.string(),
+  userId: z.string(),
+  recordId: z.string().optional(),
+});
 
 export async function editRecord(
   id: string,
   prevState: RecordState,
   formData: FormData
 ) {
-  const validatedFields = RecordSchema.safeParse({
+  const validatedFields = EditRecord.safeParse({
     ticketNumber: formData.get("ticketNumber"),
     name: formData.get("name"),
     service: formData.get("service"),
@@ -714,38 +835,41 @@ export async function editRecord(
   const session = await auth();
 
   try {
-    await pool.query(
-      `
-      UPDATE "Record"
-      SET
-        name = $1,
-        ticket = $2,
-        "recordType" = $4,
-        value = $5,
-        shift = $6,
-        service = $7,
-        "recordNumber" = $8,
-        counter = $9,
-        "userId" = $10,
-        "subService" = $11
-      WHERE id = $12
-        `,
-      [
-        name,
-        ticketNumber,
-        recordType,
-        value,
-        shift,
-        service,
-        recordNumber,
-        counter,
-        userId,
-        subService,
-        id,
-      ]
-    );
+    const pool = await poolPromise; // Await the pool connection
+
+    // Use parameterized query to update the record
+    await pool
+      .request()
+      .input("name", sql.NVarChar, name)
+      .input("ticketNumber", sql.NVarChar, ticketNumber)
+      .input("recordType", sql.NVarChar, recordType)
+      .input("value", sql.Float, value)
+      .input("shift", sql.NVarChar, shift)
+      .input("service", sql.NVarChar, service)
+      .input("recordNumber", sql.NVarChar, recordNumber)
+      .input("counter", sql.Int, counter)
+      .input("userId", sql.NVarChar, userId)
+      .input("subService", sql.NVarChar, subService)
+      .input("id", sql.NVarChar, id)
+      .query(
+        `
+          UPDATE Record
+          SET
+            name = @name,
+            ticket = @ticketNumber,
+            recordType = @recordType,
+            value = @value,
+            shift = @shift,
+            service = @service,
+            recordNumber = @recordNumber,
+            counter = @counter,
+            userId = @userId,
+            subService = @subService
+          WHERE id = @id
+        `
+      );
   } catch (e) {
-    console.log(e);
+    console.error(e);
     return {
       state_error: "Something went wrong! Failed to update record.",
       response: null,
@@ -763,7 +887,7 @@ const RequestEditRecordSchema = z.object({
 
 export async function editRequestEditRecord(
   id: string,
-  prevState: RecordState,
+  prevState: RequestEditRecordState,
   formData: FormData
 ) {
   const validatedFields = RequestEditRecordSchema.safeParse({
@@ -773,7 +897,6 @@ export async function editRequestEditRecord(
   });
 
   if (!validatedFields.success) {
-    console.log("The validated file", validatedFields.error);
     return {
       errors: validatedFields.error.flatten().fieldErrors,
       message: "Missing Fields. Failed to Edit Record.",
@@ -785,17 +908,25 @@ export async function editRequestEditRecord(
   const session = await auth();
 
   try {
-    await pool.query(
-      `
-      UPDATE "EditedRecord"
-      SET
-        status = $1,
-        "supervisorId" = $2,
-        "supervisorComment" = $3
-      WHERE id = $4
-        `,
-      [status, supervisorId, supervisorComment, id]
-    );
+    const pool = await poolPromise; // Await the pool connection
+
+    // Use parameterized query to update the record
+    await pool
+      .request()
+      .input("status", sql.NVarChar, status)
+      .input("supervisorId", sql.NVarChar, supervisorId)
+      .input("supervisorComment", sql.NVarChar, supervisorComment)
+      .input("id", sql.NVarChar, id)
+      .query(
+        `
+          UPDATE EditedRecord
+          SET
+            status = @status,
+            supervisorId = @supervisorId,
+            supervisorComment = @supervisorComment
+          WHERE id = @id
+        `
+      );
   } catch (error) {
     console.error("Something went wrong updating edited record", error);
     return {
@@ -807,254 +938,293 @@ export async function editRequestEditRecord(
   redirect(`/dashboard/${session?.user.role}/notification?edit=true`);
 }
 
-export async function deleteRecord(id: string) {
-  try {
-    await pool.query(
-      `
-      DELETE FROM "Record"
-      WHERE "id" = $1
-      `,
-      [id]
-    );
-    revalidatePath("/admin");
-  } catch (e) {
-    console.error("Something went wrong deleting record!", e);
-  }
-}
+// export async function deleteRecord(id: string) {
+//   try {
+//     await pool.query(
+//       `
+//       DELETE FROM "Record"
+//       WHERE "id" = $1
+//       `,
+//       [id]
+//     );
+//     revalidatePath("/admin");
+//   } catch (e) {
+//     console.error("Something went wrong deleting record!", e);
+//   }
+// }
 
 export async function fetchRecordsByAttendant(userId: string) {
   try {
-    const res = await pool.query<Record>(
-      `
-      SELECT 
-        r.id AS "recordId",
-        r.ticket,
-        r."recordType",
-        r.name,
-        r.service,
-        r."subService",
-        r."recordNumber",
-        r.value,
-        r.counter,
-        r.shift,
-        r."userId",
-        r."createdAt" AS "recordCreatedAt",
-        r."updatedAt" AS "recordUpdatedAt",
-        u.id AS "userId",
-        u.name AS "userName",
-        u.email AS "userEmail",
-        u."createdAt" AS "userCreatedAt",
-        SUM(r.value) OVER() AS "totalValue",
-        SUM(CASE WHEN r."recordType" = 'invoice' THEN r.value ELSE 0 END) OVER () AS "invoiceTotal",
-        SUM(CASE WHEN r."recordType" = 'receipt' THEN r.value ELSE 0 END) OVER () AS "receiptTotal",
-        u."createdAt" AS "userCreatedAt"
-      FROM "Record" r
-      JOIN "User" u ON r."userId" = u.id
-      WHERE r."userId" = $1
-      ORDER BY "recordCreatedAt" DESC
-    `,
-      [userId]
-    );
-    const records = res.rows;
+    const pool = await poolPromise;
+
+    const res = await pool
+      .request()
+      .input("userId", sql.NVarChar, userId)
+      .query(
+        `
+        SELECT 
+          r.id AS recordId,
+          r.ticket,
+          r.recordType,
+          r.name,
+          r.service,
+          r.subService,
+          r.recordNumber,
+          r.value,
+          r.counter,
+          r.shift,
+          r.userId,
+          r.createdAt AS recordCreatedAt,
+          r.updatedAt AS recordUpdatedAt,
+          u.id AS userId,
+          u.name AS userName,
+          u.email AS userEmail,
+          u.createdAt AS userCreatedAt,
+          SUM(r.value) OVER() AS totalValue,
+          SUM(CASE WHEN r.recordType = 'invoice' THEN r.value ELSE 0 END) OVER () AS invoiceTotal,
+          SUM(CASE WHEN r.recordType = 'receipt' THEN r.value ELSE 0 END) OVER () AS receiptTotal,
+          u.createdAt AS userCreatedAt
+        FROM Record r
+        JOIN [User] u ON r.userId = u.id
+        WHERE r.userId = @userId
+        ORDER BY r.createdAt DESC
+        `
+      );
+
+    const records = res.recordset;
+
     if (records.length > 0) {
       return records;
+    } else {
+      return [];
     }
   } catch (error) {
     console.error("Something went wrong fetching records", error);
+    return [];
   }
 }
 
 export async function fetchRecords() {
   try {
-    const res = await pool.query<Record>(`
-      SELECT 
-        r.id AS "recordId",
-        r.ticket,
-        r."recordType",
-        r.name,
-        r.service,
-        r."subService",
-        r."recordNumber",
-        r.value,
-        r.counter,
-        r.shift,
-        r."userId",
-        r."createdAt" AS "recordCreatedAt",
-        r."updatedAt" AS "recordUpdatedAt",
-        u.id AS "userId",
-        u.name AS "userName",
-        u.email AS "userEmail",
-        u."createdAt" AS "userCreatedAt",
-        SUM(r.value) OVER() AS "totalValue",
-        SUM(CASE WHEN r."recordType" = 'invoice' THEN r.value ELSE 0 END) OVER () AS "invoiceTotal",
-        SUM(CASE WHEN r."recordType" = 'receipt' THEN r.value ELSE 0 END) OVER () AS "receiptTotal"
-      FROM "Record" r
-      JOIN "User" u ON r."userId" = u.id
-      ORDER BY "recordCreatedAt" DESC
+    const pool = await poolPromise;
+
+    const res = await pool.request().query(`
+        SELECT 
+          r.id AS recordId,
+          r.ticket,
+          r.recordType,
+          r.name,
+          r.service,
+          r.subService,
+          r.recordNumber,
+          r.value,
+          r.counter,
+          r.shift,
+          r.userId,
+          r.createdAt AS recordCreatedAt,
+          r.updatedAt AS recordUpdatedAt,
+          u.id AS userId,
+          u.name AS userName,
+          u.email AS userEmail,
+          u.createdAt AS userCreatedAt,
+          SUM(r.value) OVER() AS totalValue,
+          SUM(CASE WHEN r.recordType = 'invoice' THEN r.value ELSE 0 END) OVER () AS invoiceTotal,
+          SUM(CASE WHEN r.recordType = 'receipt' THEN r.value ELSE 0 END) OVER () AS receiptTotal
+        FROM Record r
+        JOIN [User] u ON r.userId = u.id
+        ORDER BY r.createdAt DESC
       `);
 
-    const records = res.rows;
+    const records = res.recordset;
 
     if (records.length > 0) {
       return records;
+    } else {
+      return [];
     }
   } catch (error) {
     console.error("Something went wrong fetching records", error);
+    return [];
   }
 }
 
 export async function fetchRequestEditRecords() {
   try {
-    const res = await pool.query<EditedRecord>(`
-      SELECT 
-        r.id AS "id",
-        r."recordId" AS "recordId",
-        r.ticket,
-        r."recordType",
-        r.name,
-        r.service,
-        r."subService",
-        r."recordNumber",
-        r.value,
-        r.counter,
-        r.shift,
-        r."attendantId",
-        r.status,
-        r."attendantComment",
-        r."createdAt" AS "editedRecordCreatedAt",
-        r."updatedAt" AS "editedRecordUpdatedAt",
-        u.id AS "userId",
-        u.name AS "userName",
-        u.email AS "userEmail",
-        u.image AS "userImage"
-      FROM "EditedRecord" r
-      JOIN "User" u ON r."attendantId" = u.id
-      WHERE r.status = 'pending'
-      
+    const pool = await poolPromise;
+
+    const res = await pool.request().query(`
+        SELECT 
+          r.id AS id,
+          r.recordId AS recordId,
+          r.ticket,
+          r.recordType,
+          r.name,
+          r.service,
+          r.subService,
+          r.recordNumber,
+          r.value,
+          r.counter,
+          r.shift,
+          r.attendantId,
+          r.status,
+          r.attendantComment,
+          r.createdAt AS editedRecordCreatedAt,
+          r.updatedAt AS editedRecordUpdatedAt,
+          u.id AS userId,
+          u.name AS userName,
+          u.email AS userEmail,
+          u.image AS userImage
+        FROM EditedRecord r
+        JOIN [User] u ON r.attendantId = u.id
       `);
 
-    const records = res.rows;
+    const records = res.recordset;
 
     if (records.length > 0) {
       return records;
+    } else {
+      return [];
     }
   } catch (error) {
     console.error(
       "Something went wrong fetching requested edit records",
       error
     );
+    return [];
   }
 }
 
 export async function fetchRequestEditRecordsByUser(id: string) {
   try {
-    const res = await pool.query<EditedRecord>(
-      `
-      SELECT 
-        r.id AS "id",
-        r."recordId" AS "recordId",
-        r.ticket,
-        r."recordType",
-        r.name,
-        r.service,
-        r."subService",
-        r."recordNumber",
-        r.value,
-        r.counter,
-        r.shift,
-        r."attendantId",
-        r.status,
-        r."attendantComment",
-        r."createdAt" AS "editedRecordCreatedAt",
-        r."updatedAt" AS "editedRecordUpdatedAt",
-        u.id AS "userId",
-        u.name AS "userName",
-        u.email AS "userEmail",
-        u.image AS "userImage",
-        s.id AS "supervisorId",
-        s.name AS "supervisorName"
-      FROM "EditedRecord" r
-      JOIN "User" u ON r."attendantId" = u.id
-      LEFT JOIN "User" s ON r."supervisorId" = s.id
-      WHERE u.id = $1
-      ORDER BY "editedRecordCreatedAt" DESC
-      `,
-      [id]
-    );
+    const pool = await poolPromise;
 
-    const records = res.rows;
+    const res = await pool.request().input("attendantId", sql.VarChar, id)
+      .query(`
+        SELECT 
+          r.id AS id,
+          r.recordId AS recordId,
+          r.ticket,
+          r.recordType,
+          r.name,
+          r.service,
+          r.subService,
+          r.recordNumber,
+          r.value,
+          r.counter,
+          r.shift,
+          r.attendantId,
+          r.status,
+          r.attendantComment,
+          r.createdAt AS editedRecordCreatedAt,
+          r.updatedAt AS editedRecordUpdatedAt,
+          u.id AS userId,
+          u.name AS userName,
+          u.email AS userEmail,
+          u.image AS userImage,
+          s.id AS supervisorId,
+          s.name AS supervisorName
+        FROM EditedRecord r
+        JOIN [User] u ON r.attendantId = u.id
+        LEFT JOIN [User] s ON r.supervisorId = s.id
+        WHERE u.id = @attendantId
+        ORDER BY r.createdAt DESC
+      `);
+
+    const records = res.recordset;
 
     if (records.length > 0) {
       return records;
+    } else {
+      return [];
     }
   } catch (error) {
     console.error(
       "Something went wrong fetching requested edit records",
       error
     );
+    return [];
   }
 }
 
-export async function fetchDailyRevenue() {
-  try {
-    const res = await pool.query<Record>(`
-      SELECT 
-        DATE("createdAt") AS "createdAt",
-        SUM(value) AS "totalValue"
-      FROM "Record"
-      GROUP BY DATE("createdAt")
-      ORDER BY DATE("createdAt") DESC;
-    `);
-    return res.rows;
-  } catch (error) {
-    console.error("Error fetching daily revenue", error);
-    throw error;
-  }
-}
+// export async function fetchDailyRevenue() {
+//   try {
+//     const res = await pool.query<Record>(`
+//       SELECT
+//         DATE("createdAt") AS "createdAt",
+//         SUM(value) AS "totalValue"
+//       FROM "Record"
+//       GROUP BY DATE("createdAt")
+//       ORDER BY DATE("createdAt") DESC;
+//     `);
+//     return res.rows;
+//   } catch (error) {
+//     console.error("Error fetching daily revenue", error);
+//     throw error;
+//   }
+// }
 
-export async function fetchDailyRevenueByAttendant(id: string) {
-  try {
-    const res = await pool.query<Record>(
-      `
-      SELECT 
-        DATE("createdAt") AS "createdAt",
-        SUM(value) AS "totalValue"
-      FROM "Record"
-      WHERE "userId" = $1
-      GROUP BY DATE("createdAt")
-      ORDER BY DATE("createdAt") DESC
-      
-    `,
-      [id]
-    );
-    return res.rows;
-  } catch (error) {
-    console.error("Error fetching daily revenue", error);
-    throw error;
-  }
-}
+// export async function fetchDailyRevenueByAttendant(id: string) {
+//   try {
+//     const res = await pool.query<Record>(
+//       `
+//       SELECT
+//         DATE("createdAt") AS "createdAt",
+//         SUM(value) AS "totalValue"
+//       FROM "Record"
+//       WHERE "userId" = $1
+//       GROUP BY DATE("createdAt")
+//       ORDER BY DATE("createdAt") DESC
+
+//     `,
+//       [id]
+//     );
+//     return res.rows;
+//   } catch (error) {
+//     console.error("Error fetching daily revenue", error);
+//     throw error;
+//   }
+// }
 
 export async function getRecord(id: string) {
-  const res = await pool.query<Record>(
-    `
-    SELECT * FROM "Record" WHERE id = $1`,
-    [id]
-  );
-  const records = res.rows;
-  if (records.length > 0) {
-    return records[0];
+  try {
+    const pool = await poolPromise;
+
+    const res = await pool
+      .request()
+      .input("id", sql.VarChar, id)
+      .query("SELECT * FROM [Record] WHERE id = @id");
+
+    const records = res.recordset;
+
+    if (records.length > 0) {
+      return records[0];
+    }
+  } catch (error) {
+    console.error("Error fetching record:", error);
+    return null;
   }
 }
 
 export async function getEditedRecord(id: string) {
-  const res = await pool.query<Record>(
-    `
-    SELECT * FROM "EditedRecord" WHERE "recordId" = $1 AND status = 'accepted'`,
-    [id]
-  );
-  const records = res.rows;
-  if (records.length > 0) {
-    return records[0];
+  try {
+    const pool = await poolPromise;
+
+    const res = await pool
+      .request()
+      .input("recordId", sql.VarChar, id)
+      .input("status", sql.VarChar, "accepted")
+      .query(
+        "SELECT * FROM [EditedRecord] WHERE [recordId] = @recordId AND status = @status"
+      );
+
+    const records = res.recordset;
+
+    if (records.length > 0) {
+      return records[0];
+    }
+  } catch (error) {
+    console.error("Error fetching edited record:", error);
+    return null;
   }
 }
 
@@ -1076,57 +1246,62 @@ export async function fetchGroupedRecordsByDateRange(
     const query = `
       WITH Edited AS (
         SELECT 
-          e."recordId", 
+          e.recordId, 
           e.service, 
-          e."subService", 
+          e.subService, 
           e.value, 
           e.counter, 
           e.shift, 
-          e."recordType",
+          e.recordType,
           e.name,
-          e."createdAt"
-        FROM "EditedRecord" e
+          e.createdAt
+        FROM EditedRecord e
         WHERE e.status = 'accepted'
       ),
       MergedRecords AS (
         SELECT 
-          COALESCE(e."recordId", r.id) AS id,
+          COALESCE(e.recordId, r.id) AS id,
           COALESCE(e.service, r.service) AS service,
-          COALESCE(e."subService", r."subService") AS "subService",
+          COALESCE(e.subService, r.subService) AS subService,
           COALESCE(e.value, r.value) AS value,
           COALESCE(e.counter, r.counter) AS counter,
           COALESCE(e.shift, r.shift) AS shift,
-          COALESCE(e."recordType", r."recordType") AS "recordType",
+          COALESCE(e.recordType, r.recordType) AS recordType,
           COALESCE(e.name, r.name) AS name,
-          COALESCE(e."createdAt", r."createdAt") AS "createdAt"
-        FROM "Record" r
-        LEFT JOIN Edited e ON r.id = e."recordId"
-        ${userRole === "attendant" ? `WHERE r."userId" = $3` : ""}
+          COALESCE(e.createdAt, r.createdAt) AS createdAt
+        FROM Record r
+        LEFT JOIN Edited e ON r.id = e.recordId
+        ${userRole === "attendant" ? `WHERE r.userId = @userId` : ""}
       )
       SELECT 
-        TO_CHAR(m."createdAt", 'YYYY-MM-DD') AS "date",
-        TO_CHAR(m."createdAt", 'WW') AS "week",
-        TO_CHAR(m."createdAt", 'Month') AS "month",
+        CONVERT(VARCHAR, m.createdAt, 23) AS date,  -- Use 'YYYY-MM-DD' format
+        DATEPART(WW, m.createdAt) AS week,         -- Week number
+        DATENAME(MONTH, m.createdAt) AS month,     -- Month name
         m.service,
-        SUM(m.value) AS "totalValue",
+        SUM(m.value) AS totalValue,
         COUNT(*) AS count
       FROM MergedRecords m
-      WHERE m."createdAt" BETWEEN $1 AND $2
-      GROUP BY "date", "week", "month", m.service
-      ORDER BY "date" DESC
+      WHERE m.createdAt BETWEEN @startDate AND @endDate
+      GROUP BY CONVERT(VARCHAR, m.createdAt, 23), DATEPART(WW, m.createdAt), DATENAME(MONTH, m.createdAt), m.service
+      ORDER BY CONVERT(VARCHAR, m.createdAt, 23) DESC
     `;
 
     // Prepare the query parameters
-    const params =
-      userRole === "attendant"
-        ? [startDate, endDate, userId]
-        : [startDate, endDate];
+    userRole === "attendant"
+      ? [startDate, endDate, userId]
+      : [startDate, endDate];
 
-    // Execute the query
-    const res = await pool.query<GroupedRecord>(query, params);
+    // Execute the query using mssql's parameterized queries
+    const pool = await poolPromise; // Await the pool connection
+    const result = await pool
+      .request()
+      .input("startDate", sql.Date, startDate)
+      .input("endDate", sql.Date, endDate)
+      .input("userId", sql.VarChar, userId) // Only used for the 'attendant' role
+      .query(query);
 
-    // Process the results to ensure correct numeric conversions for `totalValue` and `count`
-    const records = res.rows.map((row) => ({
+    // Process the results to ensure correct numeric conversions for totalValue and count
+    const records = result.recordset.map((row) => ({
       ...row,
       totalValue: row.totalValue ? Number(row.totalValue) : 0,
       count: row.count ? Number(row.count) : 0,

@@ -1,10 +1,7 @@
 "use client";
 
 import { Record } from "@/app/lib/definitions";
-import {
-  filterRecordsByTimeRange,
-  groupRecordsByUserName,
-} from "@/app/lib/utils";
+import { filterRecordsByTimeRange } from "@/app/lib/utils";
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import React, { useEffect, useMemo, useState } from "react";
@@ -17,6 +14,13 @@ export default function ReportPage({ records }: { records: Record[] }) {
 
   const [useRecords, setUseRecords] = useState<Record[]>([]);
   const [recordsOfType, setRecordsOfType] = useState<Record[]>([]);
+
+  type GroupedRecords = {
+    [key: string]: {
+      count: number;
+      totalValue: number;
+    };
+  };
 
   // Update `recordsOfType` whenever `recordType` or `records` changes
   useEffect(() => {
@@ -33,7 +37,7 @@ export default function ReportPage({ records }: { records: Record[] }) {
   }, [analysisType, recordsOfType]);
 
   const groupedRecords = useMemo(() => {
-    return useRecords.reduce((acc: any, record) => {
+    return useRecords.reduce((acc: GroupedRecords, record) => {
       const key = rankBy === "service" ? record.service : record.userName;
 
       if (!acc[key]) {
@@ -46,7 +50,7 @@ export default function ReportPage({ records }: { records: Record[] }) {
   }, [useRecords, rankBy]);
 
   const sortedGroupedRecords = useMemo(() => {
-    const sorted = Object.entries(groupedRecords).sort((a: any, b: any) => {
+    const sorted = Object.entries(groupedRecords).sort((a, b) => {
       if (sortOrder === "totalValue") return b[1].totalValue - a[1].totalValue;
       return b[1].count - a[1].count;
     });
@@ -56,7 +60,7 @@ export default function ReportPage({ records }: { records: Record[] }) {
   // Calculate overall totals
   const overallTotals = useMemo(() => {
     return Object.values(groupedRecords).reduce(
-      (totals: any, group: any) => {
+      (totals, group) => {
         totals.totalServed += group.count;
         totals.totalValue += group.totalValue;
         return totals;
@@ -311,7 +315,7 @@ export default function ReportPage({ records }: { records: Record[] }) {
           </tr>
         </thead>
         <tbody>
-          {sortedGroupedRecords.map(([name, data]: any, index: number) => (
+          {sortedGroupedRecords.map(([name, data], index: number) => (
             <tr key={index}>
               <td className="border px-4 py-2 text-center">{index + 1}</td>
               <td className="border px-4 py-2">{name}</td>

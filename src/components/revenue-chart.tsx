@@ -42,17 +42,17 @@ export default async function RevenueChart({
                     height: `${(chartHeight / topLabel) * month.totalValue}px`,
                   }}
                 ></div>
-                {type === "monthly" && (
+                {type === "monthly" && month.type === "month" && (
                   <p className="-rotate-90 text-sm text-gray-400 sm:rotate-0">
                     {month.month}
                   </p>
                 )}
-                {type === "weekly" && (
+                {type === "weekly" && month.type === "week" && (
                   <p className="-rotate-90 text-sm text-gray-400 sm:rotate-0">
                     week{month.week}
                   </p>
                 )}
-                {type === "daily" && (
+                {type === "daily" && month.type === "day" && (
                   <p className="-rotate-90 text-sm text-gray-400 sm:rotate-0">
                     {month.date}
                   </p>

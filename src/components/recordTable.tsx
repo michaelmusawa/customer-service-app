@@ -8,7 +8,11 @@ import SearchIcon from "./icons/searchIcon";
 import DropIcon from "./icons/downIcon";
 import Funnel from "./icons/funnel";
 import { FormatDate } from "@/app/lib/data";
-import { getPendingRecordIds, mergeRecordsWithEdits } from "@/app/lib/utils";
+import {
+  getEditedRecordIds,
+  getPendingRecordIds,
+  mergeRecordsWithEdits,
+} from "@/app/lib/utils";
 import toast from "react-hot-toast";
 
 export default function RecordsTable({
@@ -29,12 +33,19 @@ export default function RecordsTable({
 
   const pendingIds = getPendingRecordIds(records ?? [], editedRecords ?? []);
 
+  const notEditableRecordsId = getEditedRecordIds(
+    records ?? [],
+    editedRecords ?? []
+  );
+
   const [endDate, setEndDate] = useState<string | null>(null);
   const [startValue, setStartValue] = useState<number | null>(null);
   const [endValue, setEndValue] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
   let totalPages = 0;
+
+  console.log("This are the edited records", editedRecords);
 
   const useRecords = mergeRecordsWithEdits(records ?? [], editedRecords ?? []);
 
@@ -239,8 +250,8 @@ export default function RecordsTable({
                 role === "supersupervisor" ||
                 role === "admin") && (
                 <>
-                  <th className="border px-4 py-2">Attendant</th>
-                  <th className="border px-4 py-2">Attendant Email</th>
+                  <th className="border px-4 py-2">Biller</th>
+                  <th className="border px-4 py-2">Biller email</th>
                 </>
               )}
               {role === "attendant" && (
@@ -263,7 +274,9 @@ export default function RecordsTable({
                   <td className="border px-4 py-2">{record.service}</td>
                   <td className="border px-4 py-2">{record.subService}</td>
                   <td className="border px-4 py-2">{record.recordNumber}</td>
-                  <td className="border px-4 py-2">{record.value}</td>
+                  <td className="border px-4 py-2">
+                    {record.value.toLocaleString("en-US")}
+                  </td>
                   <td className="border px-4 py-2">
                     <FormatDate date={record.recordCreatedAt} />
                   </td>
@@ -279,6 +292,10 @@ export default function RecordsTable({
                     (pendingIds.includes(record.recordId) ? (
                       <td className="border px-4 py-2 text-center text-gray-500">
                         Pending...
+                      </td>
+                    ) : notEditableRecordsId.includes(record.recordId) ? (
+                      <td className="border px-4 py-2 text-center text-gray-300">
+                        Not editable
                       </td>
                     ) : (
                       <td className="border px-4 py-2">

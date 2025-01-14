@@ -5,13 +5,8 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --countyGreen: #0a4422;
+  --countyYellow: #fbcc1a;
 }
 
 body {
@@ -30,34 +25,34 @@ select,
 input[type="email"],
 input[type="password"],
 input[type="tel"],
-input[type="text"]{
-    @apply block w-full mb-2 rounded-xl;
-    @apply border border-gray-300 bg-gray-100;
+input[type="text"] {
+  @apply block w-full mb-2 rounded-xl;
+  @apply border border-gray-300 bg-gray-100;
 }
 
 input[type="email"]:disabled,
 input[type="password"]:disabled,
 input[type="tel"]:disabled,
-input[type="text"]:disabled{
-    @apply bg-gray-100 border-0 cursor-not-allowed text-gray-500;  
+input[type="text"]:disabled {
+  @apply bg-gray-100 border-0 cursor-not-allowed text-gray-500;
 }
 
-
-
-button, .button{
+button,
+.button {
   @apply flex justify-center gap-2 w-full text-gray-700 font-semibold;
   @apply border border-gray-300 rounded-xl px-6 py-2;
 }
 
-button[type="submit"], .submit{
-  @apply bg-green-800 shadow-md hover:shadow-black/20 hover:bg-green-600 text-gray-100;
+button[type="submit"],
+.submit {
+  @apply bg-countyGreen shadow-md hover:shadow-black/20 hover:bg-green-600 text-gray-100;
 }
 
-button[type="submit"]:disabled, .submit:disabled{
+button[type="submit"]:disabled,
+.submit:disabled {
   @apply cursor-not-allowed text-gray-300 bg-green-900;
 }
 
 .rotate-y-180 {
   transform: rotateY(180deg);
 }
-

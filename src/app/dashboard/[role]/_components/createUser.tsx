@@ -1,7 +1,7 @@
 "use client";
 
 import { createUser } from "@/app/lib/action";
-import { UserState } from "@/app/lib/definitions";
+import { CreateUserState } from "@/app/lib/definitions";
 import UserForm from "@/components/forms/form";
 import React, { useEffect, useRef } from "react";
 import { useFormState } from "react-dom";
@@ -11,13 +11,14 @@ export default function CreateUserPage({
   type,
   success,
   loggedInUser,
+  label,
 }: {
   loggedInUser: string;
   success: string | undefined;
   type: string;
+  label: string;
 }) {
-  const initialState: UserState = {
-    response: null,
+  const initialState: CreateUserState = {
     message: null,
     state_error: null,
     errors: {},
@@ -36,14 +37,10 @@ export default function CreateUserPage({
   }, [success]);
 
   if (state?.message) {
-    if (state?.response === "ok") {
-      formRef.current?.reset();
-      toast.success(state.message);
-    } else if (state?.response === "!ok") {
-      toast.error(state.message);
-    }
-  } else if (state?.state_error) {
-    toast.error(state.state_error);
+    formRef.current?.reset();
+    toast.success(state.message);
+    // } else if (state?.state_error) {
+    //   toast.error(state.state_error);
   } else {
     toast.dismiss();
   }
@@ -54,7 +51,7 @@ export default function CreateUserPage({
         <UserForm
           loggedInUser={loggedInUser}
           type={type}
-          label={`Create ${type}`}
+          label={label}
           user={undefined}
         />
       </form>

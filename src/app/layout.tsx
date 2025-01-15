@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { inter } from "./fonts/fonts";
 import "./globals.css";
 import Image from "next/image";
@@ -8,6 +8,22 @@ import UserActions from "@/components/userActions";
 export const metadata: Metadata = {
   title: "Customer Service App",
   description: "Record management for NCC customer service",
+};
+
+// export const viewport: Viewport = {
+//   width: 'device-width',
+//   initialScale: 1,
+//   maximumScale: 1,
+//   userScalable: false,
+//   // Also supported but less commonly used
+//   // interactiveWidget: 'resizes-visual',
+// }
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1.0,
+  maximumScale: 1.0,
+  userScalable: false,
 };
 
 export default function RootLayout({

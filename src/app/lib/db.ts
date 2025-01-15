@@ -27,7 +27,7 @@ const poolPromise = sql.connect({
   server: "172.16.10.3", // SQL Server hostname or IP address
   database: "customerservice", // Your database name
   options: {
-    encrypt: true, // Use encryption if needed (for Azure or secure connections)
+    encrypt: false, // Use encryption if needed (for Azure or secure connections)
     trustServerCertificate: true, // Use this for local connections if you have issues with SSL
   },
 });

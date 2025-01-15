@@ -30,13 +30,15 @@ export default function RecordForm({
   userId,
   role,
   record,
+  counter,
 }: {
   role: string;
   userId: string;
-  shift: string;
+  shift: string | undefined;
+  counter: number | undefined;
   record: Record | undefined;
 }) {
-  const { counter } = useContext(CounterContext);
+
   const [recordType, setRecordType] = useState<string>(
     record?.recordType ?? ""
   );

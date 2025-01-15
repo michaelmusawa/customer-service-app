@@ -8,6 +8,9 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontSize: {
+        base: '10.5px', // Default base font size
+      },
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",

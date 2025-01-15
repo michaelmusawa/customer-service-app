@@ -85,7 +85,7 @@ export default function ProfileForm({
               Choose Image
             </label>
             <input
-              className="p-2 cursor-pointer opacity-0 ml-10 inset-0"
+              className="p-2 cursor-pointer opacity-0 ml-10 inset-0 border border-red-500"
               type="file"
               name="image"
               accept="image/*"
@@ -111,7 +111,7 @@ export default function ProfileForm({
                 aria-describedby="name-error"
                 className="p-2 pl-8"
               />
-              <UserIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
+              <UserIcon className="pointer-events-none absolute left-2 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
             </div>
             {type === "supersupervisor" ? (
               <div className="relative">
@@ -124,7 +124,7 @@ export default function ProfileForm({
                   className="p-2 pl-8 my-6"
                   aria-describedby="email-error"
                 />
-                <AtSymbolIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
+                <AtSymbolIcon className="pointer-events-none absolute left-2 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
               </div>
             ) : (
               <div className="relative">
@@ -143,7 +143,7 @@ export default function ProfileForm({
                   defaultValue={user?.email ?? ""}
                 />
 
-                <AtSymbolIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
+                <AtSymbolIcon className="pointer-events-none absolute left-2 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
               </div>
             )}
 
@@ -158,7 +158,7 @@ export default function ProfileForm({
                 className="p-2 pl-8 my-6"
                 minLength={6}
               />
-              <KeyIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
+              <KeyIcon className="pointer-events-none absolute left-2 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
             </div>
             <div className="pb-2 flex gap-2 my-6">
               <SubmitButton />

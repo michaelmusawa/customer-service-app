@@ -3,6 +3,7 @@ import RecordForm from '@/components/forms/recordForm'
 import { redirect } from 'next/navigation';
 import { auth } from '../../../../../../auth';
 import Link from 'next/link';
+import { getUserById } from '@/app/lib/action';
 
 export default async function page({ params }: { params: { role: string } }) {
 
@@ -24,18 +25,15 @@ export default async function page({ params }: { params: { role: string } }) {
       )
     }
 
-    let shift = '';
-    const currentHour = new Date().getHours(); 
-    if (currentHour < 12) {
-        shift = 'morning';
-    } else {
-        shift = 'evening';
-    }
     
     const userId = session?.user.id || '';
+    const biller = await getUserById(userId);
+    const shift = biller?.shift
+    const counter = biller?.counter
+    
 
 
   return (
-   <RecordForm record={undefined} shift={shift} userId={userId} role={session.user.role} />
+   <RecordForm record={undefined} shift={shift} userId={userId} role={session.user.role} counter={counter} />
   )
 }

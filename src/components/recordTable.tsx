@@ -45,7 +45,6 @@ export default function RecordsTable({
   const rowsPerPage = 10;
   let totalPages = 0;
 
-  console.log("This are the edited records", editedRecords);
 
   const useRecords = mergeRecordsWithEdits(records ?? [], editedRecords ?? []);
 
@@ -280,7 +279,8 @@ export default function RecordsTable({
                   <td className="border px-4 py-2">
                     <FormatDate date={record.recordCreatedAt} />
                   </td>
-                  <td className="border px-4 py-2">{record.counter}</td>
+                  {record.counter === "0" ? (<td className="border px-4 py-2"></td>):(<td className="border px-4 py-2">{record.counter}</td>)}
+                  
                   <td className="border px-4 py-2">{record.shift}</td>
                   {(role === "supervisor" || role === "supersupervisor") && (
                     <>

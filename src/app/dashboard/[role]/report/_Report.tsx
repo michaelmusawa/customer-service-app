@@ -1,5 +1,6 @@
 "use client";
 
+import { Stations } from "@/app/lib/data";
 import { Record } from "@/app/lib/definitions";
 import { filterRecordsByTimeRange } from "@/app/lib/utils";
 import { jsPDF } from "jspdf";
@@ -7,6 +8,8 @@ import "jspdf-autotable";
 import React, { useEffect, useMemo, useState } from "react";
 
 export default function ReportPage({ records }: { records: Record[] }) {
+
+ 
   const [analysisType, setAnalysisType] = useState<string>("year");
   const [recordType, setRecordType] = useState<string>("invoice");
   const [rankBy, setRankBy] = useState<string>("service");
@@ -14,6 +17,19 @@ export default function ReportPage({ records }: { records: Record[] }) {
 
   const [useRecords, setUseRecords] = useState<Record[]>([]);
   const [recordsOfType, setRecordsOfType] = useState<Record[]>([]);
+  const [station, setStation] = useState<string>('Overall');
+  const [localRecords, setLocalRecords] = useState<Record[]>([]);
+
+  useEffect(() => {
+    if (station === 'Overall') {
+      setLocalRecords(records);
+    } else {
+     const filteredLocalRecords = records?.filter(record => record.userStation === station);
+     setLocalRecords(filteredLocalRecords)
+    }
+    
+  }, [station])
+  
 
   type GroupedRecords = {
     [key: string]: {
@@ -22,13 +38,15 @@ export default function ReportPage({ records }: { records: Record[] }) {
     };
   };
 
+  
+
   // Update `recordsOfType` whenever `recordType` or `records` changes
   useEffect(() => {
-    const filtered = records.filter(
+    const filtered = localRecords?.filter(
       (record) => record.recordType === recordType
     );
     setRecordsOfType(filtered);
-  }, [recordType, records]);
+  }, [recordType, localRecords]);
 
   // Update `useRecords` whenever `analysisType` or `recordsOfType` changes
   useEffect(() => {
@@ -37,7 +55,7 @@ export default function ReportPage({ records }: { records: Record[] }) {
   }, [analysisType, recordsOfType]);
 
   const groupedRecords = useMemo(() => {
-    return useRecords.reduce((acc: GroupedRecords, record) => {
+    return useRecords?.reduce((acc: GroupedRecords, record) => {
       const key = rankBy === "service" ? record.service : record.userName;
 
       if (!acc[key]) {
@@ -50,6 +68,7 @@ export default function ReportPage({ records }: { records: Record[] }) {
   }, [useRecords, rankBy]);
 
   const sortedGroupedRecords = useMemo(() => {
+    if (!groupedRecords){return}
     const sorted = Object.entries(groupedRecords).sort((a, b) => {
       if (sortOrder === "totalValue") return b[1].totalValue - a[1].totalValue;
       return b[1].count - a[1].count;
@@ -59,6 +78,7 @@ export default function ReportPage({ records }: { records: Record[] }) {
 
   // Calculate overall totals
   const overallTotals = useMemo(() => {
+    if (!groupedRecords){return}
     return Object.values(groupedRecords).reduce(
       (totals, group) => {
         totals.totalServed += group.count;
@@ -82,10 +102,10 @@ export default function ReportPage({ records }: { records: Record[] }) {
     doc.setFont("helvetica", "normal");
     doc.text("Overall Totals", 20, 30);
 
-    doc.text(`Total Customers: ${overallTotals.totalServed}`, 20, 40);
-    doc.text(`Total Invoices: ${overallTotals.totalServed}`, 20, 50);
+    doc.text(`Total Customers: ${overallTotals?.totalServed}`, 20, 40);
+    doc.text(`Total Invoices: ${overallTotals?.totalServed}`, 20, 50);
     doc.text(
-      `Total Value: ${overallTotals.totalValue.toLocaleString("en-US")}/=`,
+      `Total Value: ${overallTotals?.totalValue.toLocaleString("en-US")}/=`,
       20,
       60
     );
@@ -129,12 +149,28 @@ export default function ReportPage({ records }: { records: Record[] }) {
       <h1 className="text-3xl font-bold text-center mb-6 text-gray-800">
         Service Report Summary
       </h1>
-
+     
       {/* Overall totals */}
       <div className="bg-gradient-to-r from-green-800 to-yellow-600 text-white p-6 rounded-lg shadow-md mb-8">
-        <h2 className="flex text-2xl font-semibold justify-center">
-          Overall Totals
-        </h2>
+  
+       <select
+  id="station"
+  value={station}
+  onChange={(e) => setStation(e.target.value)}
+  className="text-2xl font-semibold text-center bg-transparent border border-none"
+>
+  <option value="Overall" className="bg-gray-100 text-gray-700 hover:bg-gray-200">Overall total</option>
+  {Stations.map((station, index) => (
+    <option key={index} value={station.name} className="bg-gray-100 text-gray-700 hover:bg-gray-200">
+      {`${station.name} total` }
+    </option>
+  ))}
+</select>
+
+    
+        
+
+        
         <div className="flex justify-between">
           <div className="flex items-center justify-items-end text-sm font-semibold uppercase">
             <label htmlFor="analysisType" className="flex-1 mr-2">
@@ -172,7 +208,7 @@ export default function ReportPage({ records }: { records: Record[] }) {
           <div className="flex flex-col flex-1 items-center">
             <p className="text-lg">Total Customers:</p>
             <p className="text-3xl font-extrabold">
-              {overallTotals.totalServed}
+              {overallTotals?.totalServed ?? 0}
             </p>
           </div>
           <div className="flex flex-col flex-1 items-center">
@@ -183,13 +219,13 @@ export default function ReportPage({ records }: { records: Record[] }) {
             )}
 
             <p className="text-3xl font-extrabold">
-              {overallTotals.totalServed}
+              {overallTotals?.totalServed ?? 0}
             </p>
           </div>
           <div className="flex flex-col flex-1 items-center">
             <p className="text-lg">Total Value:</p>
             <p className="text-3xl font-extrabold">
-              {overallTotals.totalValue.toLocaleString("en-US")}/=
+              {overallTotals?.totalValue.toLocaleString("en-US") ?? 0}/=
             </p>
           </div>
         </div>
@@ -315,16 +351,28 @@ export default function ReportPage({ records }: { records: Record[] }) {
           </tr>
         </thead>
         <tbody>
-          {sortedGroupedRecords.map(([name, data], index: number) => (
-            <tr key={index}>
-              <td className="border px-4 py-2 text-center">{index + 1}</td>
-              <td className="border px-4 py-2">{name}</td>
-              <td className="border px-4 py-2">{data.count}</td>
-              <td className="border px-4 py-2">
-                {data.totalValue.toLocaleString("en-US")}/=
-              </td>
-            </tr>
-          ))}
+          {sortedGroupedRecords ? (
+             sortedGroupedRecords?.map(([name, data], index: number) => (
+              <tr key={index}>
+                <td className="border px-4 py-2 text-center">{index + 1}</td>
+                <td className="border px-4 py-2">{name}</td>
+                <td className="border px-4 py-2">{data.count}</td>
+                <td className="border px-4 py-2">
+                  {data.totalValue.toLocaleString("en-US")}/=
+                </td>
+              </tr>
+            ))
+          ):(
+            <tr>
+                <td
+                  colSpan={4}
+                  className="text-center py-4"
+                >
+                  No records found!
+                </td>
+              </tr>
+          )}
+         
         </tbody>
       </table>
 

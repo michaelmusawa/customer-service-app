@@ -10,6 +10,7 @@ export type User = {
   status: string;
   shiftStartDate: Date;
   shiftEndDate: Date;
+  station: string;
 };
 
 export type OnlineUser = {
@@ -32,6 +33,7 @@ export type Record = {
   userId: string;
   userName: string;
   userEmail: string;
+  userStation: string;
   counter: string;
   invoiceTotal: number;
   receiptTotal: number;
@@ -45,6 +47,7 @@ export type GroupedRecord = {
   service: string;
   totalValue: number;
   count: number;
+  userStation: string;
 };
 
 export type EditedRecord = {
@@ -66,6 +69,7 @@ export type EditedRecord = {
   userName: string;
   userImage: string;
   userEmail: string;
+  userStation: string;
   counter: string;
   attendantComment: string;
   supervisorComment: string;
@@ -166,6 +170,7 @@ export type EditUserState = {
     password?: string[];
     name?: string[];
     role?: string[];
+    station?: string[];
     image?: string[];
     resetPass?: string[];
   };
@@ -180,6 +185,7 @@ export type CreateUserState = {
     password?: string[];
     name?: string[];
     role?: string[];
+    station?: string[];
   };
   state_error?: string | null;
   message?: string | null;

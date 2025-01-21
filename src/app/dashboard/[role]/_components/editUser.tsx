@@ -58,6 +58,7 @@ export default function EditUserPage({
           label={label}
           user={user}
           loggedInUser={loggedInUser}
+          station = {undefined}
         />
       </form>
     </div>

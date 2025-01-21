@@ -15,17 +15,27 @@ export default function UsersTable({
   onlineUsers,
   type,
   loggedInUser,
+  station,
 }: {
   loggedInUser: string;
   type: string;
   onlineUsers: OnlineUser[] | undefined;
   users: User[] | undefined;
+  station: string | undefined;
 }) {
   interface ShiftAndCounter {
     userId: string;
     shift: string;
     counter: number;
   }
+  
+  let localUsers;
+  if (type === 'admin') {
+    localUsers = users;
+  } else {
+    localUsers = users?.filter(user => user.station === station );
+  }
+  
 
   const [view, setView] = useState<string>("active");
   const [shiftAndCounter, setShiftAndCounter] = useState<ShiftAndCounter>({
@@ -73,15 +83,15 @@ export default function UsersTable({
   }, [archive, activate]);
 
   if (view === "active" || view === "shift & counter") {
-    viewUsers = users?.filter((user) => user.status === null);
+    viewUsers = localUsers?.filter((user) => user.status === null);
   } else if (view === "archive") {
-    viewUsers = users?.filter((user) => user.status === "archive");
+    viewUsers = localUsers?.filter((user) => user.status === "archive");
   } else if (view === "online") {
-    viewUsers = users?.filter((user) =>
+    viewUsers = localUsers?.filter((user) =>
       onlineUsers?.some((onlineUser) => onlineUser.userId === user.id)
     );
   } else if (view === "offline") {
-    viewUsers = users?.filter(
+    viewUsers = localUsers?.filter(
       (user) =>
         !onlineUsers?.some((onlineUser) => onlineUser.userId === user.id)
     );
@@ -227,6 +237,7 @@ export default function UsersTable({
                 <th className="border px-4 py-2">No.</th>
                 <th className="border px-4 py-2">Name</th>
                 <th className="border px-4 py-2">Email</th>
+                <th className="border px-4 py-2">Station</th>
                 {(view === "active" || view === "archive") && (
                   <th className="border px-4 py-2">Account status</th>
                 )}
@@ -260,6 +271,7 @@ export default function UsersTable({
                     </td>
                     <td className="border px-4 py-2">{user.name}</td>
                     <td className="border px-4 py-2">{user.email}</td>
+                    <td className="border px-4 py-2">{user.station}</td>
                     {view === "archive" && (
                       <td className="border px-4 py-2">archived</td>
                     )}

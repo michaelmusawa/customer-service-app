@@ -5,6 +5,7 @@ import { User } from "@/app/lib/definitions";
 import { AtSymbolIcon } from "@heroicons/react/24/outline";
 import UserIcon from "../icons/userIcon";
 import Link from "next/link";
+import { Stations } from "@/app/lib/data";
 
 function SubmitButton({ editedUser }: { editedUser: User | undefined }) {
   const { pending } = useFormStatus();
@@ -21,17 +22,23 @@ function SubmitButton({ editedUser }: { editedUser: User | undefined }) {
   );
 }
 
+
+
 export default function UserForm({
   user,
   type,
   label,
   loggedInUser,
+  station,
 }: {
   loggedInUser: string;
   label: string;
   user: User | undefined;
   type: string;
+  station: string | undefined;
 }) {
+
+
   return (
     <div className="gap-2 items-end">
       <div className="flex grow items-center justify-center mb-4">
@@ -72,6 +79,31 @@ export default function UserForm({
           />
           <AtSymbolIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
         </div>
+        {loggedInUser === "admin" ? (
+          <div>
+          <label className="block text-sm font-medium text-gray-500">Select station</label>
+          <select
+            name="station"
+            defaultValue={user?.station || ""}
+            className="border p-2 rounded-lg w-full"
+          >
+            {Stations.map((station, index) => (
+              <option key={index} value={station.name}>
+                {station.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        ):(
+          <input
+          type="hidden"
+          id="station"
+          name="station"
+          defaultValue={user?.station ?? station}
+          aria-describedby="name-error"
+        />
+        )}
+        
 
         <div className="relative">
           <input

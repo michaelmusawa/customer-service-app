@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "../../../../../../auth";
 import CreateUserPage from "../../_components/createUser";
 import Link from "next/link";
-import { fetchOnlineUsers, fetchUsers } from "@/app/lib/action";
+import { fetchOnlineUsers, fetchUsers, getUserById } from "@/app/lib/action";
 import UsersTable from "../../_components/usersTable";
 
 type Params = { role: string };
@@ -47,6 +47,9 @@ export default async function Page({
     users = await fetchUsers("supervisor");
   }
 
+  const getUser = await getUserById(session.user.id);
+    const station = getUser?.station;
+
   return (
     <div>
       <CreateUserPage
@@ -54,12 +57,14 @@ export default async function Page({
         type={type}
         success={success}
         label="Create supervisor"
+        station = {station}
       />
       <UsersTable
         type={type}
         users={users}
         onlineUsers={sessionUsers}
         loggedInUser={role}
+        station = {station}
       />
     </div>
   );

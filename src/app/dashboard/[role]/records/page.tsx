@@ -6,6 +6,7 @@ import {
   fetchRecordsByAttendant,
   fetchRequestEditRecords,
   fetchRequestEditRecordsByUser,
+  getUserById,
 } from "@/app/lib/action";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -52,12 +53,17 @@ export default async function RecordsPage({
     editedRecords = await fetchRequestEditRecordsByUser(userId || "");
   }
 
+  const getUser = await getUserById(session.user.id);
+    const station = getUser?.station;
+
+
   return (
     <RecordsTable
       records={records}
       editedRecords={editedRecords}
       role={session?.user.role}
       edit={edit}
+      station = {station}
     />
   );
 }

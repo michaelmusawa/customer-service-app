@@ -3,7 +3,7 @@ import { auth } from "../../../../../../auth";
 import CreateUserPage from "../../_components/createUser";
 import Link from "next/link";
 import UsersTable from "../../_components/usersTable";
-import { fetchOnlineUsers, fetchUsers } from "@/app/lib/action";
+import { fetchOnlineUsers, fetchUsers, getUserById } from "@/app/lib/action";
 
 type Params = { role: string };
 type SearchParams = { [key: string]: string | string[] | undefined };
@@ -49,6 +49,8 @@ export default async function Page({
   }
 
   const loggedInUser = session.user.role;
+  const getUser = await getUserById(session.user.id);
+  const station = getUser?.station;
   return (
     <>
       {!id ? (
@@ -58,6 +60,7 @@ export default async function Page({
             type={type}
             success={success}
             label="Create biller"
+            station={station}
           />
         </div>
       ) : (
@@ -68,6 +71,7 @@ export default async function Page({
         users={users}
         onlineUsers={sessionUsers}
         loggedInUser={role}
+        station={station}
       />
     </>
   );

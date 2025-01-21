@@ -100,6 +100,15 @@ export default function ProfileForm({
               defaultValue={type ?? ""}
               aria-describedby="name-error"
             />
+            <div className="grow">
+            <input
+              type="hidden"
+              id="station"
+              name="station"
+              defaultValue={user?.station ?? ""}
+              aria-describedby="name-error"
+            />
+            </div>
             <div className="relative">
               <input
                 type="text"

@@ -277,7 +277,7 @@ export function filterRecordsByTimeRange(
       throw new Error("Invalid range specified");
   }
 
-  return records.filter(
+  return records?.filter(
     (record) => new Date(record.recordCreatedAt) >= startDate
   );
 }

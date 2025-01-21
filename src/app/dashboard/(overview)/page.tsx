@@ -45,9 +45,25 @@ export default async function Page() {
       fetchDailyGroupedRecords(),
     ]);
 
-  const monthlyRecords = groupRecordsByMonth(monthlyGroupedRecords);
-  const dailyRecords = groupRecordsByDay(dailyGroupedRecords);
-  const weeklyRecords = groupRecordsByWeek(weeklyGroupedRecords);
+    console.log("the dashboard records", monthlyGroupedRecords, weeklyGroupedRecords,dailyGroupedRecords)
+
+    let localMonthlyGroupedRecords;
+    let localWeeklyGroupedRecords;
+    let localDailyGroupedRecords;
+    if (user?.role === 'admin' || user?.role === 'supersupervisor') {
+      localMonthlyGroupedRecords = monthlyGroupedRecords;
+      localWeeklyGroupedRecords = weeklyGroupedRecords;
+      localDailyGroupedRecords = dailyGroupedRecords;
+    } else {
+      localMonthlyGroupedRecords = monthlyGroupedRecords?.filter(record => record.userStation === user?.station);
+      localWeeklyGroupedRecords = weeklyGroupedRecords?.filter(record => record.userStation === user?.station);
+      localDailyGroupedRecords = dailyGroupedRecords?.filter(record => record.userStation === user?.station);
+
+    }
+
+  const monthlyRecords = groupRecordsByMonth(localMonthlyGroupedRecords);
+  const dailyRecords = groupRecordsByDay(localDailyGroupedRecords);
+  const weeklyRecords = groupRecordsByWeek(localWeeklyGroupedRecords);
 
   return (
     <Dashboard

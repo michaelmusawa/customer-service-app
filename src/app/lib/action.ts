@@ -152,17 +152,20 @@ const CreateUserFormSchema = z.object({
   }),
   password: z.string(),
   role: z.string(),
+  station: z.string(),
 });
 
 export async function createUser(
   prevState: CreateUserState,
   formData: FormData
 ): Promise<CreateUserState> {
+  
   const validatedFields = CreateUserFormSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
     password: formData.get("password"),
     role: formData.get("role"),
+    station: formData.get("station"),
   });
 
   if (!validatedFields.success) {
@@ -173,12 +176,24 @@ export async function createUser(
     };
   }
 
-  const { name, email, password, role } = validatedFields.data;
+  
+
+  const { name, email, password, role, station } = validatedFields.data;
   const hashedPass = bcrypt.hashSync(password || email, bcrypt.genSaltSync(10));
   const id = crypto.randomUUID();
   const session = await auth();
   const userRole =
     email === "supersupervisor@gmail.com" ? "supersupervisor" : role;
+
+    const checkEmail = await getUser(email);
+
+    console.log("The check email",checkEmail)
+
+    if (checkEmail) {
+      return {
+        state_error: `Email already exist! Failed to create user.`,
+      };
+    }
 
   try {
     const pool = await poolPromise; // Await the pool connection
@@ -190,14 +205,16 @@ export async function createUser(
       .input("name", sql.VarChar, name)
       .input("email", sql.VarChar, email)
       .input("password", sql.VarChar, hashedPass)
+      .input("station", sql.VarChar, station)
       .input("role", sql.VarChar, userRole).query(`
-        INSERT INTO [User] (id, name, email, password, role)
-        VALUES (@id, @name, @email, @password, @role)
+        INSERT INTO [User] (id, name, email, password, station, role)
+        VALUES (@id, @name, @email, @password, @station, @role)
       `);
     revalidatePath(`/dashboard/${session?.user.role}/${role}s/create`);
     return {
       ...prevState,
-      message: `Added ${role} successfully.`,
+      state_error: null,
+      message: `Added user successfully.`,
     };
   } catch (error) {
     console.error(error);
@@ -217,6 +234,7 @@ const FormSchema = z.object({
   }),
   password: z.string(),
   role: z.string(),
+  station: z.string(),
   image: z.any().optional(),
   resetPass: z.string().nullable().optional(),
 });
@@ -231,6 +249,7 @@ export async function editUser(
     email: formData.get("email"),
     password: formData.get("password"),
     role: formData.get("role"),
+    station: formData.get("station"),
     image: formData.get("image"),
     resetPass: formData.get("resetPass"),
   });
@@ -243,7 +262,7 @@ export async function editUser(
     };
   }
 
-  const { name, email, password, role, image, resetPass } =
+  const { name, email, password, role, station, image, resetPass } =
     validatedFields.data;
 
   let hashedPass;
@@ -301,6 +320,7 @@ export async function editUser(
       .input("email", sql.VarChar, email)
       .input("password", sql.VarChar, hashedPass)
       .input("role", sql.VarChar, role)
+      .input("station", sql.VarChar, station)
       .input("image", sql.VarChar, imagePath)
       .input("id", sql.VarChar, id).query(`
       UPDATE [User]
@@ -309,6 +329,7 @@ export async function editUser(
         email = @email,
         password = @password,
         role = @role,
+        station = @station,
         image = @image
       WHERE id = @id
     `);
@@ -324,13 +345,10 @@ export async function editUser(
   }
 
   if (session?.user.role === role) {
-    if (resetPass === "true") {
-      if (session.user.role === "supersupervisor") {
-        console.log("Im here");
-        redirect("/login");
-      }
-      redirect("/dashboard");
+    if (resetPass === "true") {   
+      await signOut();  
     }
+
     revalidatePath(`/dashboard/${session?.user.role}/profile`);
   }
 
@@ -979,6 +997,7 @@ export async function fetchRecordsByAttendant(userId: string) {
           u.id AS userId,
           u.name AS userName,
           u.email AS userEmail,
+          u.station As userStation,
           u.createdAt AS userCreatedAt,
           SUM(r.value) OVER() AS totalValue,
           SUM(CASE WHEN r.recordType = 'invoice' THEN r.value ELSE 0 END) OVER () AS invoiceTotal,
@@ -1020,12 +1039,14 @@ export async function fetchRecords() {
           r.value,
           r.counter,
           r.shift,
-          r.userId,
+          r.userId AS recordUserId,
           r.createdAt AS recordCreatedAt,
           r.updatedAt AS recordUpdatedAt,
           u.id AS userId,
           u.name AS userName,
           u.email AS userEmail,
+          u.counter AS userCounter,
+          u.station AS userStation,
           u.createdAt AS userCreatedAt,
           SUM(r.value) OVER() AS totalValue,
           SUM(CASE WHEN r.recordType = 'invoice' THEN r.value ELSE 0 END) OVER () AS invoiceTotal,
@@ -1038,7 +1059,9 @@ export async function fetchRecords() {
     const records = res.recordset;
 
     if (records.length > 0) {
+      console.log("Records in the action file", records);
       return records;
+      
     } else {
       return [];
     }
@@ -1073,6 +1096,7 @@ export async function fetchRequestEditRecords() {
           u.id AS userId,
           u.name AS userName,
           u.email AS userEmail,
+          u.station AS userStation,
           u.image AS userImage
         FROM EditedRecord r
         JOIN [User] u ON r.attendantId = u.id
@@ -1242,48 +1266,64 @@ export async function fetchGroupedRecordsByDateRange(
     const userId = session.user.id;
     const userRole = session.user.role;
 
-    // Construct the query dynamically based on the user's role
+    const getUser = await getUserById(session.user.id);
+    const station = getUser?.station;
+
+    // Construct the query dynamically based on the user's role and user's station
     const query = `
-      WITH Edited AS (
-        SELECT 
-          e.recordId, 
-          e.service, 
-          e.subService, 
-          e.value, 
-          e.counter, 
-          e.shift, 
-          e.recordType,
-          e.name,
-          e.createdAt
-        FROM EditedRecord e
-        WHERE e.status = 'accepted'
-      ),
-      MergedRecords AS (
-        SELECT 
-          COALESCE(e.recordId, r.id) AS id,
-          COALESCE(e.service, r.service) AS service,
-          COALESCE(e.subService, r.subService) AS subService,
-          COALESCE(e.value, r.value) AS value,
-          COALESCE(e.counter, r.counter) AS counter,
-          COALESCE(e.shift, r.shift) AS shift,
-          COALESCE(e.recordType, r.recordType) AS recordType,
-          COALESCE(e.name, r.name) AS name,
-          COALESCE(e.createdAt, r.createdAt) AS createdAt
-        FROM Record r
-        LEFT JOIN Edited e ON r.id = e.recordId
-        ${userRole === "attendant" ? `WHERE r.userId = @userId` : ""}
-      )
-      SELECT 
-        CONVERT(VARCHAR, m.createdAt, 23) AS date,  -- Use 'YYYY-MM-DD' format
-        DATEPART(WW, m.createdAt) AS week,         -- Week number
-        DATENAME(MONTH, m.createdAt) AS month,     -- Month name
-        m.service,
-        SUM(m.value) AS totalValue,
-        COUNT(*) AS count
-      FROM MergedRecords m
-      WHERE m.createdAt BETWEEN @startDate AND @endDate
-      GROUP BY CONVERT(VARCHAR, m.createdAt, 23), DATEPART(WW, m.createdAt), DATENAME(MONTH, m.createdAt), m.service
-      ORDER BY CONVERT(VARCHAR, m.createdAt, 23) DESC
+    WITH Edited AS (
+    SELECT 
+        e.recordId,
+        e.attendantId, 
+        e.service, 
+        e.subService, 
+        e.value, 
+        e.counter, 
+        e.shift, 
+        e.recordType,
+        e.name,
+        e.createdAt,
+        u.station AS userStation  -- Ensure this comes from User table
+    FROM EditedRecord e
+    JOIN [User] u ON e.attendantId = u.id  -- Ensure this join is correct
+    WHERE e.status = 'accepted'
+),
+MergedRecords AS (
+    SELECT 
+        COALESCE(e.recordId, r.id) AS id,
+        COALESCE(e.service, r.service) AS service,
+        COALESCE(e.subService, r.subService) AS subService,
+        COALESCE(e.value, r.value) AS value,
+        COALESCE(e.counter, r.counter) AS counter,
+        COALESCE(e.shift, r.shift) AS shift,
+        COALESCE(e.recordType, r.recordType) AS recordType,
+        COALESCE(e.name, r.name) AS name,
+        COALESCE(e.createdAt, r.createdAt) AS createdAt,
+        COALESCE(e.userStation, u.station) AS userStation  -- Ensure this field exists
+    FROM Record r
+    LEFT JOIN Edited e ON r.id = e.recordId
+    LEFT JOIN [User] u ON r.userId = u.id
+    ${userRole === "attendant" ? `WHERE r.userId = @userId` : ""}
+)
+SELECT 
+    CONVERT(VARCHAR, m.createdAt, 23) AS date,
+    DATEPART(WW, m.createdAt) AS week,
+    DATENAME(MONTH, m.createdAt) AS month,
+    m.service,
+    m.userStation,                             -- Include userStation in the final result
+    SUM(m.value) AS totalValue,
+    COUNT(*) AS count
+FROM MergedRecords m
+WHERE m.createdAt BETWEEN @startDate AND @endDate
+GROUP BY 
+    CONVERT(VARCHAR, m.createdAt, 23), 
+    DATEPART(WW, m.createdAt), 
+    DATENAME(MONTH, m.createdAt), 
+    m.service,
+    m.userStation                             -- Group by userStation
+ORDER BY 
+    CONVERT(VARCHAR, m.createdAt, 23) DESC;
+
     `;
 
     // Prepare the query parameters
@@ -1307,7 +1347,9 @@ export async function fetchGroupedRecordsByDateRange(
       count: row.count ? Number(row.count) : 0,
     }));
 
-    return records.length > 0 ? records : undefined;
+      return records.length > 0 ? records : undefined;
+
+    
   } catch (error) {
     console.error(
       "Something went wrong fetching grouped records by date range",

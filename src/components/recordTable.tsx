@@ -20,22 +20,35 @@ export default function RecordsTable({
   editedRecords,
   role,
   edit,
+  station,
 }: {
   edit: string | undefined;
   role: string | undefined;
   records: Record[] | undefined;
   editedRecords: EditedRecord[] | undefined;
+  station: string | undefined;
 }) {
   const searches = ["name", "ticket", "service", "attendant", "email"];
   const [searchBy, setSearchBy] = useState("name");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [startDate, setStartDate] = useState<string | null>();
 
-  const pendingIds = getPendingRecordIds(records ?? [], editedRecords ?? []);
+  let localRecords;
+  let localEditedRecords;
+
+  if (role === "supersupervisor") {
+    localRecords = records;
+    localEditedRecords = editedRecords;
+  }else {
+    localRecords = records?.filter((record) => record.userStation === station);
+    localEditedRecords = editedRecords?.filter((record) => record.userStation === station);
+  }
+
+  const pendingIds = getPendingRecordIds(localRecords ?? [], localEditedRecords ?? []);
 
   const notEditableRecordsId = getEditedRecordIds(
-    records ?? [],
-    editedRecords ?? []
+    localRecords ?? [],
+    localEditedRecords ?? []
   );
 
   const [endDate, setEndDate] = useState<string | null>(null);
@@ -46,7 +59,7 @@ export default function RecordsTable({
   let totalPages = 0;
 
 
-  const useRecords = mergeRecordsWithEdits(records ?? [], editedRecords ?? []);
+  const useRecords = mergeRecordsWithEdits(localRecords ?? [], localEditedRecords ?? []);
 
   const filteredRecords = useRecords?.filter((record) => {
     const recordDate = new Date(record.recordCreatedAt);

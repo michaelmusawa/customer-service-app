@@ -12,11 +12,13 @@ export default function CreateUserPage({
   success,
   loggedInUser,
   label,
+  station,
 }: {
   loggedInUser: string;
   success: string | undefined;
   type: string;
   label: string;
+  station: string | undefined;
 }) {
   const initialState: CreateUserState = {
     message: null,
@@ -26,6 +28,12 @@ export default function CreateUserPage({
   const [state, formAction] = useFormState(createUser, initialState);
 
   const formRef = useRef<HTMLFormElement>(null);
+
+  if(state.state_error) {
+    toast.error(state.state_error, {
+      id: 'state_error',
+    });
+  }
 
   useEffect(() => {
     if (success === "true") {
@@ -39,10 +47,6 @@ export default function CreateUserPage({
   if (state?.message) {
     formRef.current?.reset();
     toast.success(state.message);
-    // } else if (state?.state_error) {
-    //   toast.error(state.state_error);
-  } else {
-    toast.dismiss();
   }
 
   return (
@@ -53,6 +57,7 @@ export default function CreateUserPage({
           type={type}
           label={label}
           user={undefined}
+          station={station}
         />
       </form>
     </div>

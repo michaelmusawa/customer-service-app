@@ -6,6 +6,15 @@ interface Service {
   subServices: string[];
 }
 
+interface Station {
+  name: string;
+}
+
+export const Stations: Station[] = [
+  {name: "Starehe"},
+  {name: "Dandora"}
+]
+
 export const Services: Service[] = [
   { name: "Daily parking", subServices: ["On-street", "Off-street"] },
   {

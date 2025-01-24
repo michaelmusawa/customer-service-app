@@ -143,8 +143,8 @@ export default function RecordsTable({
 
   return (
     <div className="container mt-8 mx-auto p-4 items-center">
-      <div className="mb-4 flex gap-4 items-center">
-        <div>
+      <div className="mb-4 flex flex-col md:flex-row gap-4 items-center">
+        <div className="flex gap-2 justify-center">
           {role === "attendant" && (
             <Link href={`/dashboard/${role}/records/create`}>
               <button className="submit text-sm max-md:text-xs mt-2 rounded-lg">
@@ -159,7 +159,7 @@ export default function RecordsTable({
             To Excel
           </button>
         </div>
-        <fieldset className="flex grow gap-2 ml-6 bg-gray-50 border p-2 items-center justify-between relative">
+        <fieldset className="flex flex-col md:flex-row grow gap-2 md:ml-6 bg-gray-50 border p-2 items-center justify-between relative">
           <legend className="flex items-center">
             <Funnel className="size-4" />
             Filter by:
@@ -191,13 +191,13 @@ export default function RecordsTable({
               placeholder={`Search by ${searchBy}`}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="border bg-white pl-8 mt-2 ml-3 rounded max-w-60 relative"
+              className="border bg-white pl-8 mt-2 ml-3 py-1 rounded max-w-60 relative"
             />
             <SearchIcon className="pointer-events-none absolute left-8 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
           </div>
 
           <div className="flex max-lg:flex-col gap-2 ml-4 items-center">
-            <fieldset className="border bg-gray-50 shadow-sm p-2 rounded-md">
+            <fieldset className="flex border bg-gray-50 shadow-sm p-2 rounded-md max-md:w-full">
               <legend>Date</legend>
               <input
                 type="date"
@@ -216,7 +216,7 @@ export default function RecordsTable({
           </div>
 
           <div className="flex max-lg:flex-col gap-2 ml-4 items-center">
-            <fieldset className="border bg-gray-50 shadow-sm p-2 rounded-md">
+            <fieldset className="flex border bg-gray-50 shadow-sm p-2 rounded-md">
               <legend>Value</legend>
               <input
                 type="number"

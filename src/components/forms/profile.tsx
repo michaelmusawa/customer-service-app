@@ -49,7 +49,7 @@ export default function ProfileForm({
         {resetPass === "true" && (
           <input type="hidden" name="resetPass" value="true" />
         )}
-        <FormInputs label="Update profile" />
+        <FormInputs label="Update profile" resetPass={resetPass} />
       </form>
     );
   }
@@ -59,7 +59,7 @@ export default function ProfileForm({
     </section>
   );
 
-  function FormInputs({ label }: { label: string }) {
+  function FormInputs({ label, resetPass }: { label: string, resetPass: string | null}) {
     const [preview, setPreview] = useState<string | undefined>(user?.image);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,7 +72,7 @@ export default function ProfileForm({
     return (
       <div className="gap-2 items-end">
         <h2 className="mt-8 text-xl text-gray-500 text-center mb-6">{label}</h2>
-        <div className="flex">
+        <div className="flex flex-col md:flex-row">
           <div className="w-1/3  h-2/3 mx-auto relative">
             <Image
               src={preview ?? "/images/avator.jpg"}
@@ -81,15 +81,19 @@ export default function ProfileForm({
               alt="profile image"
               className="m-auto"
             />
-            <label className="text-gray-700 text-sm ml-11 bottom-[5px] px-1 border rounded-lg pointer-events-none absolute">
+            <label 
+            htmlFor="imageInput" 
+            className="text-gray-700 text-sm ml-11 bottom-[5px] px-1 border rounded-lg pointer-events-none absolute">
               Choose Image
             </label>
             <input
+              id="imageInput"
               className="p-2 cursor-pointer opacity-0 ml-10 inset-0 border border-red-500"
               type="file"
               name="image"
               accept="image/*"
               onChange={handleFileChange}
+              required={false}
             />
           </div>
           <div className="grow">
@@ -157,10 +161,11 @@ export default function ProfileForm({
             )}
 
             <div className="relative">
+              
               <input
                 type="password"
                 id="password"
-                placeholder="Leave blank to keep current password"
+                placeholder={resetPass === "true" ? "Password" : "Password or leave blank to keep your password"}
                 name="password"
                 defaultValue={""}
                 aria-describedby="password-error"

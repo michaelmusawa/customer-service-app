@@ -30,7 +30,7 @@ export default function UsersTable({
   }
   
   let localUsers;
-  if (type === 'admin') {
+  if (loggedInUser === 'admin') {
     localUsers = users;
   } else {
     localUsers = users?.filter(user => user.station === station );
@@ -40,7 +40,7 @@ export default function UsersTable({
   const [view, setView] = useState<string>("active");
   const [shiftAndCounter, setShiftAndCounter] = useState<ShiftAndCounter>({
     userId: "",
-    shift: "morning",
+    shift: "Shift 1",
     counter: 1,
   });
   const [showArchiveModel, setShowArchiveModel] = useState<boolean>(false);

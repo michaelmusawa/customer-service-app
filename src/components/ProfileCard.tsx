@@ -62,7 +62,7 @@ export default function ProfileCard({
             </Link>
           ) : (
             <Link
-              href={`/dashboard/${type}/profile/${user!.id}/edit`}
+              href={`/dashboard/${type}/profile/${user?.id}/edit`}
               className="button bg-green-800"
             >
               <span className="text-gray-100">Edit profile</span>

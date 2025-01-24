@@ -9,6 +9,7 @@ import {
 import ArrowRightIcon from "./icons/arrowRight";
 import { useFormStatus, useFormState } from "react-dom";
 import { authenticate } from "@/app/lib/action";
+import { useState } from "react";
 
 function LoginButton() {
   const { pending } = useFormStatus();
@@ -33,6 +34,11 @@ function LoginButton() {
 
 export default function LoginForm() {
   const [errorMessage, dispatch] = useFormState(authenticate, undefined);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+
+  const togglePassword = () => {
+    setShowPassword(!showPassword);
+  }
 
   return (
     <form action={dispatch} className="space-y-3 shadow-md shadow-black/20">
@@ -67,17 +73,21 @@ export default function LoginForm() {
             >
               Password
             </label>
-            <div className="relative mb-6">
+            <div className="relative mb-6 border">
               <input
                 className="peer block w-full rounded-md border border-gray-200 py-[9px] pl-10 text-sm outline-2 placeholder:text-gray-500"
                 id="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 name="password"
                 placeholder="Enter password"
                 required
                 minLength={6}
               />
+              <span className="absolute right-2 top-0.5 pt-2 cursor-pointer" onClick={togglePassword}>
+              {showPassword ? "👁️" : "🙈"}
+              </span>
               <KeyIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
+              
             </div>
           </div>
         </div>

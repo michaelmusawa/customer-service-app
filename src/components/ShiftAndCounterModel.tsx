@@ -48,14 +48,17 @@ export default function ShiftAndCounterModel({
     setShowShiftAndCounterModel(false);
     setEditShiftAndCounter(false);
     if (state?.response === "!ok") {
-      toast.error(state.message);
+      toast.error(state.message, {id: "error"});
+      state.message = null;
     } else if (state?.response === "ok") {
-      toast.success(state.message);
+      toast.success(state.message, {id: "success"});
+      state.message = null;
     }
   } else if (state?.state_error) {
     setShowShiftAndCounterModel(false);
     setEditShiftAndCounter(false);
-    toast.error(state.state_error);
+    toast.error(state.state_error, {id: "state_error"});
+    state.state_error = null;
   } else {
     toast.dismiss();
   }

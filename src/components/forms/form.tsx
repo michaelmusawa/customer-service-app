@@ -6,6 +6,7 @@ import { AtSymbolIcon } from "@heroicons/react/24/outline";
 import UserIcon from "../icons/userIcon";
 import Link from "next/link";
 import { Stations } from "@/app/lib/data";
+import { useState } from "react";
 
 function SubmitButton({ editedUser }: { editedUser: User | undefined }) {
   const { pending } = useFormStatus();
@@ -38,6 +39,16 @@ export default function UserForm({
   station: string | undefined;
 }) {
 
+  interface ShiftAndCounter {
+    shift: string;
+    counter: number;
+  }
+
+
+  const [shiftAndCounter, setShiftAndCounter] = useState<ShiftAndCounter>({
+      shift: "Shift 1",
+      counter: 1,
+    });
 
   return (
     <div className="gap-2 items-end">
@@ -103,8 +114,6 @@ export default function UserForm({
           aria-describedby="name-error"
         />
         )}
-        
-
         <div className="relative">
           <input
             type="hidden"
@@ -117,6 +126,66 @@ export default function UserForm({
             className="p-2 pl-8"
           />
         </div>
+
+        {!user && (
+          loggedInUser === "supervisor" && (
+            <div className="flex gap-2">
+            <div className="flex justify-center gap-2 items-center flex-1 relative">
+            <p className="text-gray-500">Shift</p>
+            <select
+                                  className="p-2 pl-8"
+                                  name="shift"
+                                  id="shift"
+                                  value={shiftAndCounter.shift}
+                                  onChange={(e) =>
+                                    setShiftAndCounter((prev) => ({
+                                      ...prev,
+                                      shift: e.target.value,
+                                    }))
+                                  }
+                                >
+                                  <option value="shift 1">Shift 1</option>
+                                  <option value="shift 2">Shift 2</option>
+                                </select>
+            
+          </div>
+          <div className="flex justify-center gap-2 items-center flex-1 relative">
+            <p className="text-gray-500">Counter:</p>
+          <select
+                                  className="p-2 pl-8"
+                                  name="counter"
+                                  value={shiftAndCounter.counter}
+                                  onChange={(e) =>
+                                    setShiftAndCounter((prev) => ({
+                                      ...prev,
+                                      counter: +e.target.value,
+                                    }))
+                                  }
+                                  id="counter"
+                                >
+                                  {Array.from(
+                                    { length: 20 },
+                                    (_, i) => i + 1
+                                  ).map((counter) => (
+                                    <option
+                                      key={counter}
+                                      value={counter}
+                                      className="!max-w-[0.3px]"
+                                    >
+                                      {counter}
+                                    </option>
+                                  ))}
+                                </select>
+          
+        </div></div>
+            
+          )
+        )}
+
+        
+        
+
+        
       </div>
       <div className="pb-2 flex gap-2">
         <SubmitButton editedUser={user} />

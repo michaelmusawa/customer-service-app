@@ -46,7 +46,8 @@ export default function CreateUserPage({
 
   if (state?.message) {
     formRef.current?.reset();
-    toast.success(state.message);
+    toast.success(state.message, { id: "add-success"});
+    state.message = null;
   }
 
   return (

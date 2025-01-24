@@ -27,17 +27,10 @@ cron.schedule("0 * * * *", async () => {
   try {
     const pool = await poolPromise; // Await the pool connection
 
-    // Deleting expired ShiftNotification records
-    await pool.request().query(`
-      DELETE FROM [ShiftNotification] WHERE [expires] <= GETDATE()
-    `);
-
-    // Deleting expired Session records
+      // Deleting expired Session records
     await pool.request().query(`
       DELETE FROM [Session] WHERE [expires] <= GETDATE()
     `);
-
-    console.log("Expired records deleted");
   } catch (err) {
     console.error("Error deleting expired records:", err);
   }
@@ -153,12 +146,16 @@ const CreateUserFormSchema = z.object({
   password: z.string(),
   role: z.string(),
   station: z.string(),
+  shift: z.string(),
+  counter: z.string(),
 });
 
 export async function createUser(
   prevState: CreateUserState,
   formData: FormData
+  
 ): Promise<CreateUserState> {
+ 
   
   const validatedFields = CreateUserFormSchema.safeParse({
     name: formData.get("name"),
@@ -166,9 +163,12 @@ export async function createUser(
     password: formData.get("password"),
     role: formData.get("role"),
     station: formData.get("station"),
+    shift: formData.get("shift"),
+    counter: formData.get("counter"),
   });
 
   if (!validatedFields.success) {
+    console.log(validatedFields.error.flatten().fieldErrors)
     return {
       ...prevState,
       errors: validatedFields.error.flatten().fieldErrors,
@@ -178,7 +178,7 @@ export async function createUser(
 
   
 
-  const { name, email, password, role, station } = validatedFields.data;
+  const { name, email, password, role, station, shift, counter } = validatedFields.data;
   const hashedPass = bcrypt.hashSync(password || email, bcrypt.genSaltSync(10));
   const id = crypto.randomUUID();
   const session = await auth();
@@ -206,9 +206,11 @@ export async function createUser(
       .input("email", sql.VarChar, email)
       .input("password", sql.VarChar, hashedPass)
       .input("station", sql.VarChar, station)
+      .input("shift", sql.VarChar, shift)
+      .input("counter", sql.VarChar, counter)
       .input("role", sql.VarChar, userRole).query(`
-        INSERT INTO [User] (id, name, email, password, station, role)
-        VALUES (@id, @name, @email, @password, @station, @role)
+        INSERT INTO [User] (id, name, email, password, station, shift, counter, role)
+        VALUES (@id, @name, @email, @password, @station, @shift, @counter, @role)
       `);
     revalidatePath(`/dashboard/${session?.user.role}/${role}s/create`);
     return {
@@ -1283,7 +1285,7 @@ export async function fetchGroupedRecordsByDateRange(
         e.recordType,
         e.name,
         e.createdAt,
-        u.station AS userStation  -- Ensure this comes from User table
+        u.station AS userStation  -- Ensure this comes from the User table
     FROM EditedRecord e
     JOIN [User] u ON e.attendantId = u.id  -- Ensure this join is correct
     WHERE e.status = 'accepted'
@@ -1299,32 +1301,32 @@ MergedRecords AS (
         COALESCE(e.recordType, r.recordType) AS recordType,
         COALESCE(e.name, r.name) AS name,
         COALESCE(e.createdAt, r.createdAt) AS createdAt,
-        COALESCE(e.userStation, u.station) AS userStation  -- Ensure this field exists
+        u.station AS userStation  -- Use u.station directly since e.userStation doesn't exist
     FROM Record r
     LEFT JOIN Edited e ON r.id = e.recordId
-    LEFT JOIN [User] u ON r.userId = u.id
-    ${userRole === "attendant" ? `WHERE r.userId = @userId` : ""}
+    LEFT JOIN [User] u ON r.userId = u.id  -- Ensure this join is correct
+    WHERE r.recordType = 'invoice'  -- Filter for invoices only
+    ${userRole === "attendant" ? `AND r.userId = @userId` : ""} -- Add user-role-specific filtering dynamically
 )
 SELECT 
-    CONVERT(VARCHAR, m.createdAt, 23) AS date,
-    DATEPART(WW, m.createdAt) AS week,
-    DATENAME(MONTH, m.createdAt) AS month,
+    CONVERT(VARCHAR, m.createdAt, 23) AS date,  -- Format the date as 'YYYY-MM-DD'
+    DATEPART(WW, m.createdAt) AS week,          -- Extract the week number
+    DATENAME(MONTH, m.createdAt) AS month,      -- Extract the month name
     m.service,
-    m.userStation,                             -- Include userStation in the final result
-    SUM(m.value) AS totalValue,
-    COUNT(*) AS count
+    m.userStation,                              -- Include userStation in the result
+    SUM(m.value) AS totalValue,                 -- Aggregate the total value
+    COUNT(*) AS count                           -- Count the number of records
 FROM MergedRecords m
-WHERE m.createdAt BETWEEN @startDate AND @endDate
+WHERE m.createdAt BETWEEN @startDate AND @endDate  -- Filter records within the date range
 GROUP BY 
     CONVERT(VARCHAR, m.createdAt, 23), 
     DATEPART(WW, m.createdAt), 
     DATENAME(MONTH, m.createdAt), 
     m.service,
-    m.userStation                             -- Group by userStation
+    m.userStation                              -- Group by userStation as well
 ORDER BY 
     CONVERT(VARCHAR, m.createdAt, 23) DESC;
-
-    `;
+    `
 
     // Prepare the query parameters
     userRole === "attendant"

@@ -45,8 +45,7 @@ export default async function Page() {
       fetchDailyGroupedRecords(),
     ]);
 
-    console.log("the dashboard records", monthlyGroupedRecords, weeklyGroupedRecords,dailyGroupedRecords)
-
+  
     let localMonthlyGroupedRecords;
     let localWeeklyGroupedRecords;
     let localDailyGroupedRecords;

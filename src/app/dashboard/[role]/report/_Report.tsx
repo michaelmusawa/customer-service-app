@@ -28,7 +28,7 @@ export default function ReportPage({ records }: { records: Record[] }) {
      setLocalRecords(filteredLocalRecords)
     }
     
-  }, [station])
+  }, [station, records])
   
 
   type GroupedRecords = {
@@ -263,80 +263,7 @@ export default function ReportPage({ records }: { records: Record[] }) {
         </div>
       </div>
 
-      {/* Service category summaries */}
-      {/* {rankBy === "service" ? (
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white border border-gray-300 mx-auto">
-            <thead className="bg-green-100 text-green-800 max-lg:text-sm max-sm:text-xs">
-              <tr>
-                <th className="border px-2 py-2">No.</th>
-                <th className="border px-4 py-2">Service Category</th>
-                <th className="border px-4 py-2">Number Served</th>
-                <th className="border px-4 py-2">Total Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(sortedGroupedRecords).map(
-                ([serviceCategory, { count, totalValue }], index) => (
-                  <tr
-                    className="max-lg:text-sm max-sm:text-xs hover:bg-gray-50"
-                    key={serviceCategory}
-                  >
-                    <td className="border px-2 py-2 text-center">
-                      {index + 1}
-                    </td>
-                    <td className="border px-4 py-2">{serviceCategory}</td>
-                    <td className="border px-4 py-2">{count}</td>
-                    <td className="border px-4 py-2 font-bold">
-                      {totalValue.toLocaleString("en-US")}/=
-                    </td>
-                  </tr>
-                )
-              )}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        // Ranked table for billers
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white border border-gray-300 mx-auto">
-            <thead className="bg-green-100 text-green-800 max-lg:text-sm max-sm:text-xs">
-              <tr>
-                <th className="border px-2 py-2">No.</th>
-                <th className="border px-4 py-2">Name</th>
-                <th className="border px-4 py-2">Ticket</th>
-                <th className="border px-4 py-2">Customers</th>
-                <th className="border px-4 py-2">Record Type</th>
-                <th className="border px-4 py-2">Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedUserRecords &&
-                sortedUserRecords.map((record, index) => (
-                  <tr
-                    className="max-lg:text-sm max-sm:text-xs hover:bg-gray-50"
-                    key={index}
-                  >
-                    <td className="border px-2 py-2 text-center">
-                      {index + 1}
-                    </td>
-                    <td className="border px-4 py-2">{record.name}</td>
-                    <td className="border px-4 py-2">
-                      {record.numberOfTickets}
-                    </td>
-                    <td className="border px-4 py-2">
-                      {record.numberOfTickets}
-                    </td>
-                    <td className="border px-4 py-2">{record.shift}</td>
-                    <td className="border px-4 py-2 font-bold">
-                      {record.value.toLocaleString("en-US")}/=
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-      )} */}
+   
 
       {/* Table */}
       <table className="min-w-full bg-white border">

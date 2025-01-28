@@ -1268,9 +1268,6 @@ export async function fetchGroupedRecordsByDateRange(
     const userId = session.user.id;
     const userRole = session.user.role;
 
-    const getUser = await getUserById(session.user.id);
-    const station = getUser?.station;
-
     // Construct the query dynamically based on the user's role and user's station
     const query = `
     WITH Edited AS (

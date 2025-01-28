@@ -146,8 +146,8 @@ const CreateUserFormSchema = z.object({
   password: z.string(),
   role: z.string(),
   station: z.string(),
-  shift: z.string(),
-  counter: z.string(),
+  shift: z.string().nullable().optional(),  
+  counter: z.string().nullable().optional(), 
 });
 
 export async function createUser(
@@ -186,8 +186,6 @@ export async function createUser(
     email === "supersupervisor@gmail.com" ? "supersupervisor" : role;
 
     const checkEmail = await getUser(email);
-
-    console.log("The check email",checkEmail)
 
     if (checkEmail) {
       return {
@@ -483,52 +481,6 @@ export async function assignShiftAndCounter(
   }
 }
 
-// const ShiftWarningActionSchema = z.object({
-//   attendantId: z.string(),
-//   dismiss: z.string(),
-// });
-
-// export async function shiftWarningAction(
-//   prevState: UserState,
-//   formData: FormData
-// ) {
-//   const validatedFields = ShiftWarningActionSchema.safeParse({
-//     attendantId: formData.get("attendantId"),
-//     dismiss: formData.get("dismiss"),
-//   });
-
-//   if (!validatedFields.success) {
-//     return {
-//       errors: validatedFields.error.flatten().fieldErrors,
-//       message: "Missing Fields. Failed to archive user.",
-//     };
-//   }
-
-//   const { attendantId, dismiss } = validatedFields.data;
-
-//   const session = await auth();
-//   const supervisorId = session?.user.id;
-//   const id = crypto.randomUUID();
-//   const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-//   try {
-//     await pool.query(
-//       `
-//       INSERT INTO "ShiftNotification"
-//       ("id", "attendantId", "supervisorId", "dismiss", "expires" )
-//       VALUES ($1, $2, $3, $4, $5)
-//       `,
-//       [id, attendantId, supervisorId, dismiss, expires]
-//     );
-//   } catch (error) {
-//     console.error("Something went wrong creating shift action", error);
-//     return {
-//       state_error: "Error creating shift action",
-//       response: "!ok",
-//     };
-//   }
-// }
-
 export async function getUser(email: string): Promise<User | undefined> {
   try {
     // Await the pool connection
@@ -552,18 +504,7 @@ export async function getUser(email: string): Promise<User | undefined> {
   }
 }
 
-// export async function getUserById(id: string): Promise<User | undefined> {
-//   try {
-//     const res = await pool.query<User>(`
-//       SELECT * FROM "User"
-//       WHERE id='${id}'
-//       `);
-//     return res.rows[0];
-//   } catch (error) {
-//     console.error("Failed to fetch user:", error);
-//     throw new Error("Failed to fetch user.");
-//   }
-// }
+
 
 export async function getUserById(id: string): Promise<User | undefined> {
   try {
@@ -581,20 +522,7 @@ export async function getUserById(id: string): Promise<User | undefined> {
   }
 }
 
-// export async function deleteUser(id: string) {
-//   try {
-//     await pool.query(
-//       `
-//       DELETE FROM "User"
-//       WHERE "id" = $1
-//       `,
-//       [id]
-//     );
-//     revalidatePath("/admin");
-//   } catch (e) {
-//     console.error("Something went wrong deleting user!", e);
-//   }
-// }
+
 
 const CreateRecordSchema = z.object({
   name: z.string(),
@@ -958,20 +886,7 @@ export async function editRequestEditRecord(
   redirect(`/dashboard/${session?.user.role}/notification?edit=true`);
 }
 
-// export async function deleteRecord(id: string) {
-//   try {
-//     await pool.query(
-//       `
-//       DELETE FROM "Record"
-//       WHERE "id" = $1
-//       `,
-//       [id]
-//     );
-//     revalidatePath("/admin");
-//   } catch (e) {
-//     console.error("Something went wrong deleting record!", e);
-//   }
-// }
+
 
 export async function fetchRecordsByAttendant(userId: string) {
   try {
@@ -1061,7 +976,6 @@ export async function fetchRecords() {
     const records = res.recordset;
 
     if (records.length > 0) {
-      console.log("Records in the action file", records);
       return records;
       
     } else {
@@ -1172,44 +1086,7 @@ export async function fetchRequestEditRecordsByUser(id: string) {
   }
 }
 
-// export async function fetchDailyRevenue() {
-//   try {
-//     const res = await pool.query<Record>(`
-//       SELECT
-//         DATE("createdAt") AS "createdAt",
-//         SUM(value) AS "totalValue"
-//       FROM "Record"
-//       GROUP BY DATE("createdAt")
-//       ORDER BY DATE("createdAt") DESC;
-//     `);
-//     return res.rows;
-//   } catch (error) {
-//     console.error("Error fetching daily revenue", error);
-//     throw error;
-//   }
-// }
 
-// export async function fetchDailyRevenueByAttendant(id: string) {
-//   try {
-//     const res = await pool.query<Record>(
-//       `
-//       SELECT
-//         DATE("createdAt") AS "createdAt",
-//         SUM(value) AS "totalValue"
-//       FROM "Record"
-//       WHERE "userId" = $1
-//       GROUP BY DATE("createdAt")
-//       ORDER BY DATE("createdAt") DESC
-
-//     `,
-//       [id]
-//     );
-//     return res.rows;
-//   } catch (error) {
-//     console.error("Error fetching daily revenue", error);
-//     throw error;
-//   }
-// }
 
 export async function getRecord(id: string) {
   try {

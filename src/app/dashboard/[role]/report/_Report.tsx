@@ -1,15 +1,16 @@
 "use client";
 
 import { Stations } from "@/app/lib/data";
-import { Record } from "@/app/lib/definitions";
-import { filterRecordsByTimeRange } from "@/app/lib/utils";
+import { EditedRecord, Record } from "@/app/lib/definitions";
+import { filterRecordsByTimeRange, mergeRecordsWithEdits } from "@/app/lib/utils";
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import React, { useEffect, useMemo, useState } from "react";
 
-export default function ReportPage({ records }: { records: Record[] }) {
+export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedRecords: Record[], editedRecords: EditedRecord[]; }) {
 
- 
+ const records = mergeRecordsWithEdits(fetchedRecords ?? [], editedRecords ?? []);
+
   const [analysisType, setAnalysisType] = useState<string>("year");
   const [recordType, setRecordType] = useState<string>("invoice");
   const [rankBy, setRankBy] = useState<string>("service");

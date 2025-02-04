@@ -23,7 +23,7 @@ export const formatDateToLocal = (
 };
 
 export const generateYAxis = (
-  revenue: GroupedByMonth[] | GroupedByDay[] | GroupedByWeek[]
+  revenue: GroupedByMonth[] | GroupedByDay[] | GroupedByWeek[] | GroupedByYear[]
 ) => {
   const yAxisLabels = [];
   const highestRecord = Math.max(...revenue.map((month) => month.totalValue));
@@ -249,6 +249,43 @@ export function groupRecordsByDay(
     totalValue: groupedByDay[date].totalValue,
   }));
 }
+
+export type GroupedByYear = {
+  type: "year";
+  date:string;
+  dayNames:string
+  weeek:string
+  month:string
+  records: GroupedRecord[];
+  totalValue: number;
+};
+
+export function groupRecordsByYear(
+  records: GroupedRecord[] | undefined
+): GroupedByYear[] {
+  const groupedByYear: {
+    [year: string]: { records: GroupedRecord[]; totalValue: number };
+  } = {};
+
+  records?.forEach((record) => {
+    const year = record.date.split("-")[0]; // Extract year from date string (YYYY-MM-DD)
+
+    if (!groupedByYear[year]) {
+      groupedByYear[year] = { records: [], totalValue: 0 };
+    }
+    groupedByYear[year].records.push(record);
+
+    groupedByYear[year].totalValue += record.totalValue;
+  });
+
+  return Object.keys(groupedByYear).map((year) => ({
+    type: "year",
+    year,
+    records: groupedByYear[year].records,
+    totalValue: groupedByYear[year].totalValue,
+  }));
+}
+
 
 export function filterRecordsByTimeRange(
   records: Record[],

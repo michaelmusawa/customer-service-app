@@ -3,6 +3,7 @@ import {
   fetchMonthlyGroupedRecords,
   fetchWeeklyGroupedRecords,
   fetchDailyGroupedRecords,
+  fetchYearlyGroupedRecords,
 } from "../../lib/action";
 import { auth } from "../../../../auth";
 import bcrypt from "bcrypt";
@@ -12,6 +13,7 @@ import {
   groupRecordsByDay,
   groupRecordsByMonth,
   groupRecordsByWeek,
+  groupRecordsByYear,
 } from "@/app/lib/utils";
 import Dashboard from "./Dashboard";
 
@@ -38,22 +40,26 @@ export default async function Page() {
     return redirect(`/dashboard/${user?.role}/profile?resetPass=true`);
   }
 
-  const [monthlyGroupedRecords, weeklyGroupedRecords, dailyGroupedRecords] =
+  const [monthlyGroupedRecords, weeklyGroupedRecords, dailyGroupedRecords, yearlyGroupedRecords] =
     await Promise.all([
       fetchMonthlyGroupedRecords(),
       fetchWeeklyGroupedRecords(),
       fetchDailyGroupedRecords(),
+      fetchYearlyGroupedRecords(),
     ]);
 
   
     let localMonthlyGroupedRecords;
     let localWeeklyGroupedRecords;
     let localDailyGroupedRecords;
+    let localYearlyGroupedRecords;
     if (user?.role === 'admin' || user?.role === 'supersupervisor') {
+      localYearlyGroupedRecords = yearlyGroupedRecords;
       localMonthlyGroupedRecords = monthlyGroupedRecords;
       localWeeklyGroupedRecords = weeklyGroupedRecords;
       localDailyGroupedRecords = dailyGroupedRecords;
     } else {
+      localYearlyGroupedRecords = yearlyGroupedRecords?.filter(record => record.userStation === user?.station);
       localMonthlyGroupedRecords = monthlyGroupedRecords?.filter(record => record.userStation === user?.station);
       localWeeklyGroupedRecords = weeklyGroupedRecords?.filter(record => record.userStation === user?.station);
       localDailyGroupedRecords = dailyGroupedRecords?.filter(record => record.userStation === user?.station);
@@ -63,9 +69,11 @@ export default async function Page() {
   const monthlyRecords = groupRecordsByMonth(localMonthlyGroupedRecords);
   const dailyRecords = groupRecordsByDay(localDailyGroupedRecords);
   const weeklyRecords = groupRecordsByWeek(localWeeklyGroupedRecords);
+  const yearlyRecords = groupRecordsByYear(localYearlyGroupedRecords);
 
   return (
     <Dashboard
+      yearlyRecords={yearlyRecords}
       monthlyRecords={monthlyRecords}
       weeklyRecords={weeklyRecords}
       dailyRecords={dailyRecords}

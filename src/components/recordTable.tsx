@@ -28,7 +28,7 @@ export default function RecordsTable({
   editedRecords: EditedRecord[] | undefined;
   station: string | undefined;
 }) {
-  const searches = ["name", "ticket", "service", "attendant", "email"];
+  const searches = ["customer name", "ticket", "service", "biller", "email"];
   const [searchBy, setSearchBy] = useState("name");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [startDate, setStartDate] = useState<string | null>();
@@ -41,7 +41,7 @@ export default function RecordsTable({
     localEditedRecords = editedRecords;
   }else {
     localRecords = records?.filter((record) => record.userStation === station);
-    localEditedRecords = editedRecords?.filter((record) => record.userStation === station);
+    localEditedRecords = editedRecords;
   }
 
   const pendingIds = getPendingRecordIds(localRecords ?? [], localEditedRecords ?? []);
@@ -64,7 +64,7 @@ export default function RecordsTable({
   const filteredRecords = useRecords?.filter((record) => {
     const recordDate = new Date(record.recordCreatedAt);
     let matchesSearch;
-    if (searchBy == "name") {
+    if (searchBy == "customer name") {
       matchesSearch = record.name
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
@@ -76,7 +76,7 @@ export default function RecordsTable({
       matchesSearch = record.service
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
-    } else if (searchBy == "attendant") {
+    } else if (searchBy == "biller") {
       matchesSearch = record.userName
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
@@ -176,7 +176,7 @@ export default function RecordsTable({
             >
               {searches.map((search, index) => (
                 <option
-                  className="text-white"
+                  className="text-gray-500"
                   id="search"
                   value={search}
                   key={index}

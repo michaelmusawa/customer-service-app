@@ -1,5 +1,5 @@
 import { GroupedByMonth } from "../dashboard/(overview)/page";
-import { GroupedByDay, GroupedByWeek } from "./utils";
+import { GroupedByDay, GroupedByWeek, GroupedByYear } from "./utils";
 
 interface Service {
   name: string;
@@ -265,7 +265,7 @@ export const Services: Service[] = [
 ];
 
 export const getServiceStats = (
-  groupedData: GroupedByMonth[] | GroupedByDay[] | GroupedByWeek[]
+  groupedData: GroupedByMonth[] | GroupedByDay[] | GroupedByWeek[] | GroupedByYear[]
 ) => {
   const serviceStats: {
     [key: string]: { count: number; totalValue: number };

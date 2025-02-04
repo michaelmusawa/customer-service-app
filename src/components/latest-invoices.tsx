@@ -3,12 +3,12 @@ import { lusitana } from "@/app/fonts/fonts";
 import clsx from "clsx";
 import { getServiceStats } from "@/app/lib/data";
 import { GroupedByMonth } from "@/app/dashboard/(overview)/page";
-import { GroupedByDay, GroupedByWeek } from "@/app/lib/utils";
+import { GroupedByDay, GroupedByWeek, GroupedByYear } from "@/app/lib/utils";
 
 export default async function LatestInvoices({
   records,
 }: {
-  records: GroupedByMonth[] | GroupedByDay[] | GroupedByWeek[] | undefined;
+  records: GroupedByMonth[] | GroupedByDay[] | GroupedByWeek[] | GroupedByYear[] | undefined;
 }) {
   const services = getServiceStats(records ?? []);
 

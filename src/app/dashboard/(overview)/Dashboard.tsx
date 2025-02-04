@@ -6,23 +6,27 @@ import LatestInvoices from "@/components/latest-invoices";
 import RevenueChart from "@/components/revenue-chart";
 import React, { useEffect, useState } from "react";
 import { GroupedByMonth } from "./page";
-import { GroupedByDay, GroupedByWeek } from "@/app/lib/utils";
+import { GroupedByDay, GroupedByWeek, GroupedByYear } from "@/app/lib/utils";
 
 export default function Dashboard({
   user,
   monthlyRecords,
   dailyRecords,
+  yearlyRecords,
   weeklyRecords,
 }: {
   user: string;
   monthlyRecords: GroupedByMonth[];
   dailyRecords: GroupedByDay[];
   weeklyRecords: GroupedByWeek[];
+  yearlyRecords: GroupedByYear[];
 }) {
   const [analysisType, setAnalysisType] = useState<string>("monthly");
 
+
   const [useRecords, setUseRecords] = useState(() => {
     if (analysisType === "monthly") return monthlyRecords;
+    if (analysisType === "yearly") return yearlyRecords;
     if (analysisType === "weekly") return weeklyRecords;
     if (analysisType === "daily") return dailyRecords;
     return [];
@@ -35,8 +39,11 @@ export default function Dashboard({
       setUseRecords(weeklyRecords || []);
     } else if (analysisType === "daily") {
       setUseRecords(dailyRecords || []);
-    }
-  }, [analysisType, dailyRecords, monthlyRecords, weeklyRecords]);
+    
+  } else if (analysisType === "yearly") {
+    setUseRecords(yearlyRecords || []);
+  }
+  }, [analysisType, dailyRecords, monthlyRecords, weeklyRecords, yearlyRecords]);
 
   const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setAnalysisType(event.target.value);
@@ -44,6 +51,8 @@ export default function Dashboard({
   function Capitalize(text: string): string {
     return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
   }
+
+ 
   return (
     <main>
       <div
@@ -68,6 +77,7 @@ export default function Dashboard({
               onChange={handleChange}
               className="flex-1 border px-2 py-1 rounded text-gray-700"
             >
+              <option value="yearly">Yealy Analysis</option>
               <option value="monthly">Monthly Analysis</option>
               <option value="weekly">Weekly Analysis</option>
               <option value="daily">Daily Analysis</option>

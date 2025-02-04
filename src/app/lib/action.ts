@@ -1148,59 +1148,63 @@ export async function fetchGroupedRecordsByDateRange(
     // Construct the query dynamically based on the user's role and user's station
     const query = `
     WITH Edited AS (
+      SELECT 
+          e.recordId,
+          e.attendantId, 
+          e.service, 
+          e.subService, 
+          e.value, 
+          e.counter, 
+          e.shift, 
+          e.recordType,
+          e.name,
+          e.createdAt,
+          u.station AS userStation
+      FROM EditedRecord e
+      JOIN [User] u ON e.attendantId = u.id
+      WHERE e.status = 'accepted'
+    ),
+    MergedRecords AS (
+      SELECT 
+          COALESCE(e.recordId, r.id) AS id,
+          COALESCE(e.service, r.service) AS service,
+          COALESCE(e.subService, r.subService) AS subService,
+          COALESCE(e.value, r.value) AS value,
+          COALESCE(e.counter, r.counter) AS counter,
+          COALESCE(e.shift, r.shift) AS shift,
+          COALESCE(e.recordType, r.recordType) AS recordType,
+          COALESCE(e.name, r.name) AS name,
+          COALESCE(e.createdAt, r.createdAt) AS createdAt,
+          u.station AS userStation
+      FROM Record r
+      LEFT JOIN Edited e ON r.id = e.recordId
+      LEFT JOIN [User] u ON r.userId = u.id
+      WHERE r.recordType = 'invoice'
+      ${userRole === "attendant" ? `AND r.userId = @userId` : ""}
+    )
     SELECT 
-        e.recordId,
-        e.attendantId, 
-        e.service, 
-        e.subService, 
-        e.value, 
-        e.counter, 
-        e.shift, 
-        e.recordType,
-        e.name,
-        e.createdAt,
-        u.station AS userStation  -- Ensure this comes from the User table
-    FROM EditedRecord e
-    JOIN [User] u ON e.attendantId = u.id  -- Ensure this join is correct
-    WHERE e.status = 'accepted'
-),
-MergedRecords AS (
-    SELECT 
-        COALESCE(e.recordId, r.id) AS id,
-        COALESCE(e.service, r.service) AS service,
-        COALESCE(e.subService, r.subService) AS subService,
-        COALESCE(e.value, r.value) AS value,
-        COALESCE(e.counter, r.counter) AS counter,
-        COALESCE(e.shift, r.shift) AS shift,
-        COALESCE(e.recordType, r.recordType) AS recordType,
-        COALESCE(e.name, r.name) AS name,
-        COALESCE(e.createdAt, r.createdAt) AS createdAt,
-        u.station AS userStation  -- Use u.station directly since e.userStation doesn't exist
-    FROM Record r
-    LEFT JOIN Edited e ON r.id = e.recordId
-    LEFT JOIN [User] u ON r.userId = u.id  -- Ensure this join is correct
-    WHERE r.recordType = 'invoice'  -- Filter for invoices only
-    ${userRole === "attendant" ? `AND r.userId = @userId` : ""} -- Add user-role-specific filtering dynamically
-)
-SELECT 
-    CONVERT(VARCHAR, m.createdAt, 23) AS date,  -- Format the date as 'YYYY-MM-DD'
-    DATEPART(WW, m.createdAt) AS week,          -- Extract the week number
-    DATENAME(MONTH, m.createdAt) AS month,      -- Extract the month name
+    CONVERT(VARCHAR, m.createdAt, 23) AS date,   -- 'YYYY-MM-DD'
+    CONVERT(VARCHAR, m.createdAt, 108) AS time,  -- Extract time 'HH:mm' (Daily Analysis)
+    DATENAME(WEEKDAY, m.createdAt) AS dayName,   -- Extract day name (Weekly Analysis)
+    DATEPART(WW, m.createdAt) AS week,           -- Extract week number (Monthly Analysis)
+    DATENAME(MONTH, m.createdAt) AS month,       -- Extract month name (Yearly Analysis)
     m.service,
-    m.userStation,                              -- Include userStation in the result
-    SUM(m.value) AS totalValue,                 -- Aggregate the total value
-    COUNT(*) AS count                           -- Count the number of records
+    m.userStation,
+    SUM(m.value) AS totalValue,
+    COUNT(*) AS count
 FROM MergedRecords m
-WHERE m.createdAt BETWEEN @startDate AND @endDate  -- Filter records within the date range
+WHERE m.createdAt BETWEEN @startDate AND @endDate
 GROUP BY 
     CONVERT(VARCHAR, m.createdAt, 23), 
+    CONVERT(VARCHAR, m.createdAt, 108),
+    DATENAME(WEEKDAY, m.createdAt),
     DATEPART(WW, m.createdAt), 
-    DATENAME(MONTH, m.createdAt), 
+    DATENAME(MONTH, m.createdAt),
     m.service,
-    m.userStation                              -- Group by userStation as well
+    m.userStation
 ORDER BY 
-    CONVERT(VARCHAR, m.createdAt, 23) DESC;
-    `
+    CONVERT(VARCHAR, m.createdAt, 23) DESC, time DESC;
+    `;
 
     // Prepare the query parameters
     userRole === "attendant"
@@ -1208,24 +1212,23 @@ ORDER BY
       : [startDate, endDate];
 
     // Execute the query using mssql's parameterized queries
-    const pool = await poolPromise; // Await the pool connection
+    console.log("The used start and end dates are:", startDate, endDate);
+    const pool = await poolPromise;
     const result = await pool
       .request()
-      .input("startDate", sql.Date, startDate)
-      .input("endDate", sql.Date, endDate)
-      .input("userId", sql.VarChar, userId) // Only used for the 'attendant' role
+      .input("startDate", sql.DateTime, startDate)
+      .input("endDate", sql.DateTime, endDate)
+      .input("userId", sql.VarChar, userId) // Only used for 'attendant' role
       .query(query);
 
-    // Process the results to ensure correct numeric conversions for totalValue and count
+    // Process the results
     const records = result.recordset.map((row) => ({
       ...row,
       totalValue: row.totalValue ? Number(row.totalValue) : 0,
       count: row.count ? Number(row.count) : 0,
     }));
 
-      return records.length > 0 ? records : undefined;
-
-    
+    return records.length > 0 ? records : undefined;
   } catch (error) {
     console.error(
       "Something went wrong fetching grouped records by date range",
@@ -1236,79 +1239,62 @@ ORDER BY
 }
 
 // Fetch daily records grouped by day of the week
-export async function fetchDailyGroupedRecords() {
-  const today = new Date().toISOString().split("T")[0]; // Get today's date in 'YYYY-MM-DD' format
-  const startOfDay = `${today}T00:00:00.000Z`;
-  const endOfDay = `${today}T23:59:59.999Z`;
-  return fetchGroupedRecordsByDateRange(startOfDay, endOfDay);
+export async function fetchDailyGroupedRecords(): Promise<GroupedRecord[] | undefined> {
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Start of today
+  const endOfDay = new Date(startOfDay);
+  endOfDay.setHours(23, 59, 59, 999); // End of today
+
+  const formatDateTime = (date: Date): string => date.toISOString().replace("T", " ").substring(0, 23);
+
+  console.log("The start and end of day:", formatDateTime(startOfDay), formatDateTime(endOfDay));
+
+  const records = await fetchGroupedRecordsByDateRange(formatDateTime(startOfDay), formatDateTime(endOfDay));
+  return records;
 }
 
-export async function fetchWeeklyGroupedRecords(): Promise<GroupedRecord[]> {
+
+// Utility function to format date-time as "YYYY-MM-DD HH:MM:SS.sss"
+const formatDateTime = (date: Date): string => date.toISOString().replace("T", " ").substring(0, 23);
+
+// Fetch weekly records grouped by week
+export async function fetchWeeklyGroupedRecords(): Promise<GroupedRecord[] | undefined> {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth(); // Current month (0-indexed)
+  const dayOfWeek = now.getDay();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1)); // Start of the week (Monday)
+  startOfWeek.setHours(0, 0, 0, 0); // Reset to start of the day
 
-  const startOfMonth = new Date(year, month, 1); // First day of the month
-  const endOfMonth = new Date(year, month + 1, 0); // Last day of the month
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6); // End of the week (Sunday)
+  endOfWeek.setHours(23, 59, 59, 999); // Reset to end of the day
 
-  const groupedRecords: GroupedRecord[] = [];
-  let currentWeek = 1;
-  let startOfWeek = new Date(startOfMonth);
-
-  while (startOfWeek <= endOfMonth) {
-    // Calculate the end of the current week (Saturday)
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(startOfWeek.getDate() + (6 - startOfWeek.getDay()));
-
-    // Adjust the endOfWeek if it exceeds the month's end
-    if (endOfWeek > endOfMonth) {
-      endOfWeek.setDate(endOfMonth.getDate());
-    }
-
-    // Fetch records for this week
-    const weeklyRecords = await fetchGroupedRecordsByDateRange(
-      startOfWeek.toISOString(),
-      new Date(endOfWeek.getTime() + 86399999).toISOString() // Include endOfWeek full day
-    );
-
-    // Map weeklyRecords to include the custom week numbering
-    if (weeklyRecords && weeklyRecords.length > 0) {
-      weeklyRecords.forEach((record) => {
-        groupedRecords.push({
-          ...record,
-          week: currentWeek.toString(), // Replace week property with custom numbering
-        });
-      });
-    }
-
-    // Move to the next week
-    startOfWeek = new Date(endOfWeek);
-    startOfWeek.setDate(startOfWeek.getDate() + 1);
-    currentWeek++;
-  }
-  return groupedRecords;
+  console.log("The start and end of week:", formatDateTime(startOfWeek), formatDateTime(endOfWeek));
+  return fetchGroupedRecordsByDateRange(formatDateTime(startOfWeek), formatDateTime(endOfWeek));
 }
 
-export async function fetchMonthlyGroupedRecords(): Promise<
-  GroupedRecord[] | undefined
-> {
+// Fetch monthly records grouped by month
+export async function fetchMonthlyGroupedRecords(): Promise<GroupedRecord[] | undefined> {
   const now = new Date();
-  const year = now.getFullYear();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1); // Start of the month
+  startOfMonth.setHours(0, 0, 0, 0); // Reset to start of the day
 
-  const allMonthlyRecords = [];
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0); // Last day of the month
+  endOfMonth.setHours(23, 59, 59, 999); // Reset to end of the day
 
-  for (let month = 0; month < 12; month++) {
-    const startOfMonth = new Date(year, month, 1).toISOString().split("T")[0];
-    const endOfMonth = new Date(year, month + 1, 0).toISOString().split("T")[0];
+  console.log("The start and end of month:", formatDateTime(startOfMonth), formatDateTime(endOfMonth));
+  return fetchGroupedRecordsByDateRange(formatDateTime(startOfMonth), formatDateTime(endOfMonth));
+}
 
-    const monthlyRecords = await fetchGroupedRecordsByDateRange(
-      `${startOfMonth}T00:00:00.000Z`,
-      `${endOfMonth}T23:59:59.999Z`
-    );
+// Fetch yearly records grouped by year
+export async function fetchYearlyGroupedRecords(): Promise<GroupedRecord[] | undefined> {
+  const now = new Date();
+  const startOfYear = new Date(now.getFullYear(), 0, 1); // January 1st
+  startOfYear.setHours(0, 0, 0, 0); // Reset to start of the day
 
-    if (monthlyRecords) {
-      allMonthlyRecords.push(...monthlyRecords);
-    }
-  }
-  return allMonthlyRecords;
+  const endOfYear = new Date(now.getFullYear(), 11, 31); // December 31st
+  endOfYear.setHours(23, 59, 59, 999); // Reset to end of the day
+
+  console.log("The start and end of year:", formatDateTime(startOfYear), formatDateTime(endOfYear));
+  return fetchGroupedRecordsByDateRange(formatDateTime(startOfYear), formatDateTime(endOfYear));
 }

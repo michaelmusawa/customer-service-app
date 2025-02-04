@@ -1,6 +1,6 @@
 import { BanknotesIcon, InboxIcon } from "@heroicons/react/24/outline";
 import { lusitana } from "@/app/fonts/fonts";
-import { GroupedByDay, GroupedByWeek } from "@/app/lib/utils";
+import { GroupedByDay, GroupedByWeek, GroupedByYear } from "@/app/lib/utils";
 import { GroupedByMonth } from "@/app/dashboard/(overview)/page";
 import { getServiceStats } from "@/app/lib/data";
 
@@ -16,7 +16,7 @@ export function Card({
   type,
 }: {
   title: string;
-  value: GroupedByDay[] | GroupedByWeek[] | GroupedByMonth[];
+  value: GroupedByDay[] | GroupedByWeek[] | GroupedByMonth[] | GroupedByYear[];
   type: "records" | "invoice" | "services";
 }) {
   const Icon = iconMap[type];

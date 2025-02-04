@@ -1,13 +1,13 @@
 import { GroupedByMonth } from "@/app/dashboard/(overview)/page";
 import { lusitana } from "@/app/fonts/fonts";
-import { generateYAxis, GroupedByDay, GroupedByWeek } from "@/app/lib/utils";
+import { generateYAxis, GroupedByDay, GroupedByWeek, GroupedByYear } from "@/app/lib/utils";
 
 export default async function RevenueChart({
   revenue,
   type,
 }: {
   type: string;
-  revenue: GroupedByMonth[] | GroupedByDay[] | GroupedByWeek[] | undefined;
+  revenue: GroupedByMonth[] | GroupedByDay[] | GroupedByWeek[] | GroupedByYear[] | undefined;
 }) {
   const chartHeight = 300;
 
@@ -42,6 +42,11 @@ export default async function RevenueChart({
                     height: `${(chartHeight / topLabel) * month.totalValue}px`,
                   }}
                 ></div>
+                {type === "yearly" && month.type === "year" && (
+                  <p className="-rotate-90 text-sm text-gray-400 sm:rotate-0">
+                    {month.year}
+                  </p>
+                )}
                 {type === "monthly" && month.type === "month" && (
                   <p className="-rotate-90 text-sm text-gray-400 sm:rotate-0">
                     {month.month}

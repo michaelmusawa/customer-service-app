@@ -29,7 +29,7 @@ export default function RecordsTable({
   station: string | undefined;
 }) {
   const searches = ["customer name", "ticket", "service", "biller", "email"];
-  const [searchBy, setSearchBy] = useState("name");
+  const [searchBy, setSearchBy] = useState("customer name");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [startDate, setStartDate] = useState<string | null>();
 
@@ -43,6 +43,8 @@ export default function RecordsTable({
     localRecords = records?.filter((record) => record.userStation === station);
     localEditedRecords = editedRecords;
   }
+
+
 
   const pendingIds = getPendingRecordIds(localRecords ?? [], localEditedRecords ?? []);
 
@@ -61,9 +63,11 @@ export default function RecordsTable({
 
   const useRecords = mergeRecordsWithEdits(localRecords ?? [], localEditedRecords ?? []);
 
+
   const filteredRecords = useRecords?.filter((record) => {
     const recordDate = new Date(record.recordCreatedAt);
     let matchesSearch;
+
     if (searchBy == "customer name") {
       matchesSearch = record.name
         .toLowerCase()

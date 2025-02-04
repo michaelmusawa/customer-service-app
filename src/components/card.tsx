@@ -22,21 +22,21 @@ export function Card({
   const Icon = iconMap[type];
 
   function getTotalNumberOfRecords(
-    records: GroupedByDay[] | GroupedByWeek[] | GroupedByMonth[]
+    records: GroupedByDay[] | GroupedByWeek[] | GroupedByMonth[] | GroupedByYear[]
   ): number {
     const services = getServiceStats(records);
     return services.reduce((total, entry) => total + entry.count, 0);
   }
 
   function getTotalValue(
-    records: GroupedByDay[] | GroupedByWeek[] | GroupedByMonth[]
+    records: GroupedByDay[] | GroupedByWeek[] | GroupedByMonth[] | GroupedByYear[]
   ): number {
     const services = getServiceStats(records);
     return services.reduce((total, entry) => total + entry.totalValue, 0);
   }
 
   function getTypesOfServices(
-    records: GroupedByDay[] | GroupedByWeek[] | GroupedByMonth[]
+    records: GroupedByDay[] | GroupedByWeek[] | GroupedByMonth[] | GroupedByYear[]
   ): number {
     const services = getServiceStats(records);
     return services.length;

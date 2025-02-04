@@ -280,6 +280,10 @@ export function groupRecordsByYear(
 
   return Object.keys(groupedByYear).map((year) => ({
     type: "year",
+    date: '',
+    dayNames:'',
+    weeek:'',
+    month:'',
     year,
     records: groupedByYear[year].records,
     totalValue: groupedByYear[year].totalValue,

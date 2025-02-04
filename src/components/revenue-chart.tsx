@@ -44,7 +44,7 @@ export default async function RevenueChart({
                 ></div>
                 {type === "yearly" && month.type === "year" && (
                   <p className="-rotate-90 text-sm text-gray-400 sm:rotate-0">
-                    {month.year}
+                    {month.month}
                   </p>
                 )}
                 {type === "monthly" && month.type === "month" && (

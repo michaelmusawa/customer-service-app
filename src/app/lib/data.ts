@@ -1,5 +1,6 @@
 import { GroupedByMonth } from "../dashboard/(overview)/page";
-import { GroupedByDay, GroupedByWeek, GroupedByYear } from "./utils";
+import { fetchUsers } from "./action";
+import { GroupedByDay, GroupedByHour, GroupedByWeek } from "./utils";
 
 interface Service {
   name: string;
@@ -265,7 +266,7 @@ export const Services: Service[] = [
 ];
 
 export const getServiceStats = (
-  groupedData: GroupedByMonth[] | GroupedByDay[] | GroupedByWeek[] | GroupedByYear[]
+  groupedData: GroupedByMonth[] | GroupedByDay[] | GroupedByWeek[] | GroupedByHour[]
 ) => {
   const serviceStats: {
     [key: string]: { count: number; totalValue: number };
@@ -334,3 +335,31 @@ export function formatTime(date: Date) {
 
   return `${hours}:${minutes} ${ampm}`;
 }
+
+// const counters = Array.from({ length: 20 }, (_, i) => i + 1)
+//   .flatMap((counter) => [`${counter}A`, `${counter}B`]);
+
+
+// export const availableCounters = async() => {
+//   const users = await fetchUsers("attendant");
+//   const assignedCounters = new Set(users?.map((user) => user.counter));
+//   const availableCounters = counters.filter((counter) => !assignedCounters.has(counter));
+//   return availableCounters
+// }
+
+export const availableCounters = async( targetShift: string) => {
+
+  const users = await fetchUsers("attendant");
+  const allCounters = Array.from({ length: 20 }, (_, i) => i + 1)
+    .flatMap((counter) => [`${counter}A`, `${counter}B`]);
+
+  // Get assigned counters for the given shift
+  const assignedCounters = new Set(
+    users
+      .filter((user) => user.shift === targetShift) // Filter users by the same shift
+      .map((user) => user.counter) // Extract their counters
+  );
+
+  // Return only unassigned counters for the target shift
+  return allCounters.filter((counter) => !assignedCounters.has(counter));
+};

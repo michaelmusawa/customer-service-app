@@ -6,7 +6,7 @@ import LatestInvoices from "@/components/latest-invoices";
 import RevenueChart from "@/components/revenue-chart";
 import React, { useEffect, useState } from "react";
 import { GroupedByMonth } from "./page";
-import { GroupedByDay, GroupedByWeek, GroupedByYear } from "@/app/lib/utils";
+import { GroupedByDay, GroupedByHour, GroupedByWeek } from "@/app/lib/utils";
 
 export default function Dashboard({
   user,
@@ -16,12 +16,12 @@ export default function Dashboard({
   weeklyRecords,
 }: {
   user: string;
-  monthlyRecords: GroupedByMonth[];
-  dailyRecords: GroupedByDay[];
-  weeklyRecords: GroupedByWeek[];
-  yearlyRecords: GroupedByYear[];
+  monthlyRecords: GroupedByWeek[];
+  dailyRecords: GroupedByHour[];
+  weeklyRecords: GroupedByDay[];
+  yearlyRecords: GroupedByMonth[];
 }) {
-  const [analysisType, setAnalysisType] = useState<string>("monthly");
+  const [analysisType, setAnalysisType] = useState<string>("yearly");
 
 
   const [useRecords, setUseRecords] = useState(() => {

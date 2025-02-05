@@ -8,7 +8,6 @@ import {
   CreateUserState,
   EditRecordState,
   EditUserState,
-  GroupedRecord,
   OnlineUser,
   RecordState,
   RequestEditRecordState,
@@ -22,6 +21,7 @@ import bcrypt from "bcrypt";
 import { revalidatePath } from "next/cache";
 import fs from "fs/promises";
 import cron from "node-cron";
+import { LocalRecords } from "../dashboard/(overview)/page";
 
 cron.schedule("0 * * * *", async () => {
   try {
@@ -95,7 +95,7 @@ export async function signUserOut() {
   redirect("/login");
 }
 
-export async function fetchUsers(user: string) {
+export async function fetchUsers(user: string): Promise<User[]> {
   try {
     const pool = await poolPromise; // Ensure the pool is connected
     const result = await pool.request().input("role", sql.VarChar, user) // Sanitize the user input and avoid SQL injection
@@ -108,9 +108,12 @@ export async function fetchUsers(user: string) {
     const users = result.recordset; // The result is stored in `recordset`
     if (users.length > 0) {
       return users;
+    }else {
+      return [];
     }
   } catch (error) {
     console.error("Something went wrong fetching supervisors", error);
+    return [];
   }
 }
 
@@ -420,7 +423,7 @@ export async function archiveUser(
 }
 
 const ShiftAndCounterUserSchema = z.object({
-  counter: z.coerce.number(),
+  counter: z.string(),
   shift: z.string(),
   role: z.string(),
 });
@@ -453,7 +456,7 @@ export async function assignShiftAndCounter(
     await pool
       .request()
       .input("id", sql.VarChar, id)
-      .input("counter", sql.Int, counter)
+      .input("counter", sql.VarChar, counter)
       .input("shift", sql.VarChar, shift)
       .query(
         `
@@ -1134,7 +1137,7 @@ export async function getEditedRecord(id: string) {
 export async function fetchGroupedRecordsByDateRange(
   startDate: string,
   endDate: string
-): Promise<GroupedRecord[] | undefined> {
+): Promise<LocalRecords[] | undefined> {
   try {
     // Authenticate and get the user session
     const session = await auth();
@@ -1212,7 +1215,7 @@ ORDER BY
       : [startDate, endDate];
 
     // Execute the query using mssql's parameterized queries
-    console.log("The used start and end dates are:", startDate, endDate);
+
     const pool = await poolPromise;
     const result = await pool
       .request()
@@ -1239,15 +1242,13 @@ ORDER BY
 }
 
 // Fetch daily records grouped by day of the week
-export async function fetchDailyGroupedRecords(): Promise<GroupedRecord[] | undefined> {
+export async function fetchDailyGroupedRecords(): Promise<LocalRecords[] | undefined> {
   const now = new Date();
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Start of today
   const endOfDay = new Date(startOfDay);
   endOfDay.setHours(23, 59, 59, 999); // End of today
 
   const formatDateTime = (date: Date): string => date.toISOString().replace("T", " ").substring(0, 23);
-
-  console.log("The start and end of day:", formatDateTime(startOfDay), formatDateTime(endOfDay));
 
   const records = await fetchGroupedRecordsByDateRange(formatDateTime(startOfDay), formatDateTime(endOfDay));
   return records;
@@ -1258,7 +1259,7 @@ export async function fetchDailyGroupedRecords(): Promise<GroupedRecord[] | unde
 const formatDateTime = (date: Date): string => date.toISOString().replace("T", " ").substring(0, 23);
 
 // Fetch weekly records grouped by week
-export async function fetchWeeklyGroupedRecords(): Promise<GroupedRecord[] | undefined> {
+export async function fetchWeeklyGroupedRecords(): Promise<LocalRecords[] | undefined> {
   const now = new Date();
   const dayOfWeek = now.getDay();
   const startOfWeek = new Date(now);
@@ -1269,25 +1270,22 @@ export async function fetchWeeklyGroupedRecords(): Promise<GroupedRecord[] | und
   endOfWeek.setDate(startOfWeek.getDate() + 6); // End of the week (Sunday)
   endOfWeek.setHours(23, 59, 59, 999); // Reset to end of the day
 
-  console.log("The start and end of week:", formatDateTime(startOfWeek), formatDateTime(endOfWeek));
   return fetchGroupedRecordsByDateRange(formatDateTime(startOfWeek), formatDateTime(endOfWeek));
 }
 
 // Fetch monthly records grouped by month
-export async function fetchMonthlyGroupedRecords(): Promise<GroupedRecord[] | undefined> {
+export async function fetchMonthlyGroupedRecords(): Promise<LocalRecords[] | undefined> {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1); // Start of the month
   startOfMonth.setHours(0, 0, 0, 0); // Reset to start of the day
 
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0); // Last day of the month
   endOfMonth.setHours(23, 59, 59, 999); // Reset to end of the day
-
-  console.log("The start and end of month:", formatDateTime(startOfMonth), formatDateTime(endOfMonth));
   return fetchGroupedRecordsByDateRange(formatDateTime(startOfMonth), formatDateTime(endOfMonth));
 }
 
 // Fetch yearly records grouped by year
-export async function fetchYearlyGroupedRecords(): Promise<GroupedRecord[] | undefined> {
+export async function fetchYearlyGroupedRecords(): Promise<LocalRecords[] | undefined> {
   const now = new Date();
   const startOfYear = new Date(now.getFullYear(), 0, 1); // January 1st
   startOfYear.setHours(0, 0, 0, 0); // Reset to start of the day
@@ -1295,6 +1293,5 @@ export async function fetchYearlyGroupedRecords(): Promise<GroupedRecord[] | und
   const endOfYear = new Date(now.getFullYear(), 11, 31); // December 31st
   endOfYear.setHours(23, 59, 59, 999); // Reset to end of the day
 
-  console.log("The start and end of year:", formatDateTime(startOfYear), formatDateTime(endOfYear));
   return fetchGroupedRecordsByDateRange(formatDateTime(startOfYear), formatDateTime(endOfYear));
 }

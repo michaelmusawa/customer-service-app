@@ -5,7 +5,7 @@ export type User = {
   password: string;
   role: string;
   image: string;
-  counter: number;
+  counter: string;
   shift: string;
   status: string;
   shiftStartDate: Date;

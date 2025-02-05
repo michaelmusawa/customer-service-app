@@ -16,7 +16,7 @@ export default function ShiftAndCounterModel({
   setEditShiftAndCounter,
 }: {
   userId: string;
-  counter: number;
+  counter: string;
   shift: string;
   role: string;
   setShowShiftAndCounterModel: (value: boolean) => void;
@@ -53,6 +53,11 @@ export default function ShiftAndCounterModel({
     } else if (state?.response === "ok") {
       toast.success(state.message, {id: "success"});
       state.message = null;
+      if (typeof window !== "undefined") {
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      }
     }
   } else if (state?.state_error) {
     setShowShiftAndCounterModel(false);

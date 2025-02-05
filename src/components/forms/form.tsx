@@ -5,8 +5,8 @@ import { User } from "@/app/lib/definitions";
 import { AtSymbolIcon } from "@heroicons/react/24/outline";
 import UserIcon from "../icons/userIcon";
 import Link from "next/link";
-import { Stations } from "@/app/lib/data";
-import { useState } from "react";
+import { availableCounters, Stations } from "@/app/lib/data";
+import { useEffect, useState } from "react";
 
 function SubmitButton({ editedUser }: { editedUser: User | undefined }) {
   const { pending } = useFormStatus();
@@ -41,14 +41,29 @@ export default function UserForm({
 
   interface ShiftAndCounter {
     shift: string;
-    counter: number;
+    counter: string;
   }
 
 
   const [shiftAndCounter, setShiftAndCounter] = useState<ShiftAndCounter>({
       shift: "Shift 1",
-      counter: 1,
+      counter: "1A",
     });
+
+      const [selectedShift, setSelectedShift] = useState('');
+      const [counters, setCounters] = useState<string[]>([]);
+      const [loading, setLoading] = useState(true);
+    
+      useEffect(() => {
+        const fetchCounters = async () => {
+          setLoading(true);
+          const data = await availableCounters(selectedShift);
+          setCounters(data);
+          setLoading(false);
+        };
+    
+        fetchCounters();
+      }, [selectedShift]);
 
   return (
     <div className="gap-2 items-end">
@@ -137,11 +152,14 @@ export default function UserForm({
                                   name="shift"
                                   id="shift"
                                   value={shiftAndCounter.shift}
-                                  onChange={(e) =>
+                                  onChange={(e) => {
                                     setShiftAndCounter((prev) => ({
                                       ...prev,
                                       shift: e.target.value,
                                     }))
+                                    setSelectedShift(e.target.value);
+                                  }
+                                    
                                   }
                                 >
                                   <option value="shift 1">Shift 1</option>
@@ -158,23 +176,24 @@ export default function UserForm({
                                   onChange={(e) =>
                                     setShiftAndCounter((prev) => ({
                                       ...prev,
-                                      counter: +e.target.value,
+                                      counter: e.target.value,
                                     }))
                                   }
                                   id="counter"
                                 >
-                                  {Array.from(
-                                    { length: 20 },
-                                    (_, i) => i + 1
-                                  ).map((counter) => (
-                                    <option
-                                      key={counter}
-                                      value={counter}
-                                      className="!max-w-[0.3px]"
-                                    >
-                                      {counter}
-                                    </option>
-                                  ))}
+                                  {loading ? (
+                                    <option className="!max-w-[0.3px]">
+                                    loading...
+                                  </option>
+                                  ): (
+                                    counters?.map((counter) => (
+                                      <option key={counter} value={counter} className="!max-w-[0.3px]">
+                                        {counter}
+                                      </option>
+                                      
+                                                                      ))
+                                  )}
+                                 
                                 </select>
           
         </div></div>

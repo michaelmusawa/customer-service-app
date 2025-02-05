@@ -34,12 +34,11 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
 
   type GroupedRecords = {
     [key: string]: {
+      shift: string;
       count: number;
       totalValue: number;
     };
   };
-
-  
 
   // Update `recordsOfType` whenever `recordType` or `records` changes
   useEffect(() => {
@@ -57,29 +56,41 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
 
   const groupedRecords = useMemo(() => {
     return useRecords?.reduce((acc: GroupedRecords, record) => {
-      const key = rankBy === "service" ? record.service : record.userName;
-
+      const key = rankBy === "service" ? `${record.service}-${record.shift}` : `${record.userName}-${record.shift}`;
+  
       if (!acc[key]) {
-        acc[key] = { count: 0, totalValue: 0 };
+        acc[key] = { count: 0, totalValue: 0, shift: record.shift };
       }
       acc[key].count += 1;
       acc[key].totalValue += record.value;
       return acc;
-    }, {});
+    }, {} as GroupedRecords);
   }, [useRecords, rankBy]);
-
+  
   const sortedGroupedRecords = useMemo(() => {
-    if (!groupedRecords){return}
+    if (!groupedRecords) return;
+  
     const sorted = Object.entries(groupedRecords).sort((a, b) => {
       if (sortOrder === "totalValue") return b[1].totalValue - a[1].totalValue;
       return b[1].count - a[1].count;
     });
-    return sorted;
+  
+    // Map sorted records to include shift in output
+    return sorted.map(([key, data]) => {
+      const [name, shift] = key.split("-");
+      return {
+        name,
+        shift,
+        count: data.count,
+        totalValue: data.totalValue,
+      };
+    });
   }, [groupedRecords, sortOrder]);
-
+  
   // Calculate overall totals
   const overallTotals = useMemo(() => {
-    if (!groupedRecords){return}
+    if (!groupedRecords) return;
+  
     return Object.values(groupedRecords).reduce(
       (totals, group) => {
         totals.totalServed += group.count;
@@ -89,61 +100,98 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
       { totalServed: 0, totalValue: 0 }
     );
   }, [groupedRecords]);
+  
 
   const generatePDF = () => {
     const doc = new jsPDF();
-
+    let yPos = 20; // Start position for text
+  
+    // Get the current date
+    const currentDate = new Date().toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  
     // Title of the report
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
-    doc.text("Service Report Summary", 20, 20);
-
-    // Overall Totals section
+    doc.text(`Service Report Summary - ${station}`, 20, yPos);
+    yPos += 10;
+  
+    // Add date below the title
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "italic");
+    doc.text(`Date: ${currentDate}`, 20, yPos);
+    yPos += 15;
+  
+    // Overall Totals Section
     doc.setFontSize(12);
     doc.setFont("helvetica", "normal");
-    doc.text("Overall Totals", 20, 30);
-
-    doc.text(`Total Customers: ${overallTotals?.totalServed}`, 20, 40);
-    doc.text(`Total Invoices: ${overallTotals?.totalServed}`, 20, 50);
-    doc.text(
-      `Total Value: ${overallTotals?.totalValue.toLocaleString("en-US")}/=`,
-      20,
-      60
-    );
-
-    // Service Category Table
-    doc.text("Service Category Summary", 20, 70);
-
-    doc.autoTable({
-      startY: 80,
-      head: [["No.", "Service Category", "Number Served", "Total Value"]],
-      body: Object.entries(groupedRecords).map(
-        ([serviceCategory, { count, totalValue }], index) => [
+    doc.text("Overall Totals", 20, yPos);
+    yPos += 10;
+  
+    doc.text(`Total Customers: ${overallTotals?.totalServed ?? 0}`, 20, yPos);
+    yPos += 10;
+  
+    const totalLabel = recordType === "invoice" ? "Total Invoices" : "Total Receipts";
+    doc.text(`${totalLabel}: ${overallTotals?.totalServed ?? 0}`, 20, yPos);
+    yPos += 10;
+  
+    doc.text(`Total Value: ${overallTotals?.totalValue.toLocaleString("en-US")}/=`, 20, yPos);
+    yPos += 20;
+  
+    // Function to generate table for a given shift
+    const addShiftTable = (shiftLabel:string, shift:string) => {
+      doc.text(`${shiftLabel} Summary`, 20, yPos);
+      yPos += 10;
+  
+      const shiftRecords = sortedGroupedRecords?.filter((record) => record.shift === shift) || [];
+      if (shiftRecords.length === 0) {
+        doc.text("No records found", 20, yPos);
+        yPos += 10;
+        return;
+      }
+  
+      doc.autoTable({
+        startY: yPos,
+        head: [["No.", rankBy === "service" ? "Service Category" : "Biller", "Number Served", "Total Value"]],
+        body: shiftRecords.map((record, index) => [
           index + 1,
-          serviceCategory,
-          count,
-          `${totalValue.toLocaleString("en-US")}/=`,
-        ]
-      ),
-      headStyles: {
-        fillColor: [41, 128, 185], // Blue
-        textColor: [255, 255, 255], // White
-        fontSize: 12,
-        fontStyle: "bold",
-      },
-      bodyStyles: {
-        fontSize: 12,
-        lineColor: [211, 211, 211], // Light gray line color
-        halign: "center", // Center align text in cells
-      },
-      tableWidth: "auto", // Adjust column width to content
-      margin: { top: 10, left: 20, right: 20, bottom: 10 },
-      theme: "grid",
-    });
-
-    // Save the PDF
-    doc.save("service_report.pdf");
+          record.name,
+          record.count,
+          `${record.totalValue.toLocaleString("en-US")}/=`,
+        ]),
+        headStyles: {
+          fillColor: [41, 128, 185], // Blue header
+          textColor: [255, 255, 255], // White text
+          fontSize: 12,
+          fontStyle: "bold",
+        },
+        bodyStyles: {
+          fontSize: 12,
+          lineColor: [211, 211, 211], // Light gray borders
+        },
+        margin: { left: 20, right: 20 },
+        theme: "grid",
+      });
+  
+      yPos = doc.autoTable.previous.finalY + 20; // Update Y position after table
+    };
+  
+    // Add tables for each shift
+    addShiftTable("Shift 1", "shift 1");
+    addShiftTable("Shift 2", "shift 2");
+  
+    // Format date for filename (YYYY-MM-DD)
+    const formattedDate = new Date().toISOString().split("T")[0];
+  
+    // Save the PDF with the date in the filename
+    doc.save(`service_report_${station}_${formattedDate}.pdf`);
   };
+  
+  
+ 
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
@@ -264,9 +312,9 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
         </div>
       </div>
 
-   
+      <h4 className="my-4 text-center">Shift 1</h4>
 
-      {/* Table */}
+      {/* Table of shift 1 */}
       <table className="min-w-full bg-white border">
         <thead className="bg-green-100">
           <tr>
@@ -279,14 +327,16 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
           </tr>
         </thead>
         <tbody>
-          {sortedGroupedRecords ? (
-             sortedGroupedRecords?.map(([name, data], index: number) => (
+        {sortedGroupedRecords ? (
+  sortedGroupedRecords
+    .filter((record) => record.shift === "shift 1")
+    .map((record, index: number) => (
               <tr key={index}>
                 <td className="border px-4 py-2 text-center">{index + 1}</td>
-                <td className="border px-4 py-2">{name}</td>
-                <td className="border px-4 py-2">{data.count}</td>
+                <td className="border px-4 py-2">{record.name}</td>
+                <td className="border px-4 py-2">{record.count}</td>
                 <td className="border px-4 py-2">
-                  {data.totalValue.toLocaleString("en-US")}/=
+                  {record.totalValue.toLocaleString("en-US")}/=
                 </td>
               </tr>
             ))
@@ -303,6 +353,50 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
          
         </tbody>
       </table>
+
+<h4 className="my-4 text-center">Shift 2</h4>
+
+      {/* Table of shift 2*/}
+      <table className="min-w-full bg-white border">
+        <thead className="bg-green-100">
+          <tr>
+            <th className="border px-4 py-2">No.</th>
+            <th className="border px-4 py-2">
+              {rankBy === "service" ? "Service Category" : "Biller"}
+            </th>
+            <th className="border px-4 py-2">Number Served</th>
+            <th className="border px-4 py-2">Total Value</th>
+          </tr>
+        </thead>
+        <tbody>
+        {sortedGroupedRecords ? (
+  sortedGroupedRecords
+    .filter((record) => record.shift === "shift 2")
+    .map((record, index: number) => (
+              <tr key={index}>
+                <td className="border px-4 py-2 text-center">{index + 1}</td>
+                <td className="border px-4 py-2">{record.name}</td>
+                <td className="border px-4 py-2">{record.count}</td>
+                <td className="border px-4 py-2">
+                  {record.totalValue.toLocaleString("en-US")}/=
+                </td>
+              </tr>
+            ))
+          ):(
+            <tr>
+                <td
+                  colSpan={4}
+                  className="text-center py-4"
+                >
+                  No records found!
+                </td>
+              </tr>
+          )}
+         
+        </tbody>
+      </table>
+
+
 
       <div className="flex justify-center mt-6 w-fit mx-auto">
         <button

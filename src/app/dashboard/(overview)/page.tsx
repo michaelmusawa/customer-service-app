@@ -8,19 +8,30 @@ import {
 import { auth } from "../../../../auth";
 import bcrypt from "bcrypt";
 import { redirect } from "next/navigation";
-import { GroupedRecord } from "@/app/lib/definitions";
 import {
   groupRecordsByDay,
+  groupRecordsByHour,
   groupRecordsByMonth,
   groupRecordsByWeek,
-  groupRecordsByYear,
 } from "@/app/lib/utils";
 import Dashboard from "./Dashboard";
+
+export type LocalRecords = {
+  count: number;
+  date: string;
+  dayName: string;
+  month:string;
+  service:string
+  time:string;
+  totalValue:number;
+  userStation:string;
+  week: number;
+}
 
 export type GroupedByMonth = {
   type: "month";
   month: string;
-  records: GroupedRecord[];
+  records: LocalRecords[];
   totalValue: number;
 };
 
@@ -66,10 +77,12 @@ export default async function Page() {
 
     }
 
-  const monthlyRecords = groupRecordsByMonth(localMonthlyGroupedRecords);
-  const dailyRecords = groupRecordsByDay(localDailyGroupedRecords);
-  const weeklyRecords = groupRecordsByWeek(localWeeklyGroupedRecords);
-  const yearlyRecords = groupRecordsByYear(localYearlyGroupedRecords);
+    
+
+  const monthlyRecords = groupRecordsByWeek(localMonthlyGroupedRecords);
+  const dailyRecords = groupRecordsByHour(localDailyGroupedRecords);
+  const weeklyRecords = groupRecordsByDay(localWeeklyGroupedRecords);
+  const yearlyRecords = groupRecordsByMonth(localYearlyGroupedRecords);
 
   return (
     <Dashboard

@@ -1,5 +1,5 @@
-import { GroupedByMonth } from "../dashboard/(overview)/page";
-import { EditedRecord, GroupedRecord, Record } from "./definitions";
+import { GroupedByMonth, LocalRecords } from "../dashboard/(overview)/page";
+import { EditedRecord, Record } from "./definitions";
 
 export const formatCurrency = (amount: number) => {
   return (amount / 100).toLocaleString("en-US", {
@@ -23,7 +23,7 @@ export const formatDateToLocal = (
 };
 
 export const generateYAxis = (
-  revenue: GroupedByMonth[] | GroupedByDay[] | GroupedByWeek[] | GroupedByYear[]
+  revenue: GroupedByMonth[] | GroupedByDay[] | GroupedByWeek[] | GroupedByHour[]
 ) => {
   const yAxisLabels = [];
   const highestRecord = Math.max(...revenue.map((month) => month.totalValue));
@@ -159,17 +159,17 @@ export function getEditedRecordIds(
 }
 
 export type GroupedByWeek = {
-  type: "week";
+  type: string;
   week: string;
-  records: GroupedRecord[];
+  records: LocalRecords[];
   totalValue: number;
 };
 
 export function groupRecordsByWeek(
-  records: GroupedRecord[] | undefined
+  records: LocalRecords[] | undefined
 ): GroupedByWeek[] {
   const groupedByWeek: {
-    [week: string]: { records: GroupedRecord[]; totalValue: number };
+    [week: string]: { records: LocalRecords[]; totalValue: number };
   } = {};
 
   records?.forEach((record) => {
@@ -192,10 +192,10 @@ export function groupRecordsByWeek(
 }
 
 export function groupRecordsByMonth(
-  records: GroupedRecord[] | undefined
+  records: LocalRecords[] | undefined
 ): GroupedByMonth[] {
   const groupedByMonth: {
-    [month: string]: { records: GroupedRecord[]; totalValue: number };
+    [month: string]: { records: LocalRecords[]; totalValue: number };
   } = {};
 
   records?.forEach((record) => {
@@ -217,76 +217,70 @@ export function groupRecordsByMonth(
   }));
 }
 
+export type GroupedByHour = {
+  type: string;
+  hour: string;
+  records: LocalRecords[];
+  totalValue: number;
+};
+
+export function groupRecordsByHour(
+  records: LocalRecords[] | undefined
+): GroupedByHour[] {
+  const groupedByHour: {
+    [hour: string]: { records: LocalRecords[]; totalValue: number };
+  } = {};
+
+  records?.forEach((record) => {
+    // Extract the hour from the time (e.g., "11:03:24" → "11:00")
+    const hour = record.time.split(":")[0] + ":00";
+
+    if (!groupedByHour[hour]) {
+      groupedByHour[hour] = { records: [], totalValue: 0 };
+    }
+
+    groupedByHour[hour].records.push(record);
+    groupedByHour[hour].totalValue += record.totalValue;
+  });
+
+  return Object.entries(groupedByHour).map(([hour, data]) => ({
+    type: "hour",
+    hour,
+    records: data.records,
+    totalValue: data.totalValue,
+  }));
+}
+
 export type GroupedByDay = {
-  type: "day";
-  date: string;
-  records: GroupedRecord[];
+  type: string;
+  dayName: string;
+  records: LocalRecords[];
   totalValue: number;
 };
 
 export function groupRecordsByDay(
-  records: GroupedRecord[] | undefined
+  records: LocalRecords[] | undefined
 ): GroupedByDay[] {
   const groupedByDay: {
-    [date: string]: { records: GroupedRecord[]; totalValue: number };
+    [dayName: string]: { records: LocalRecords[]; totalValue: number };
   } = {};
 
   records?.forEach((record) => {
-    const date = record.date;
+    const dayName = record.dayName;
 
-    if (!groupedByDay[date]) {
-      groupedByDay[date] = { records: [], totalValue: 0 };
+    if (!groupedByDay[dayName]) {
+      groupedByDay[dayName] = { records: [], totalValue: 0 };
     }
-    groupedByDay[date].records.push(record);
+    groupedByDay[dayName].records.push(record);
 
-    groupedByDay[date].totalValue += record.totalValue;
+    groupedByDay[dayName].totalValue += record.totalValue;
   });
 
-  return Object.keys(groupedByDay).map((date) => ({
+  return Object.keys(groupedByDay).map((dayName) => ({
     type: "day",
-    date,
-    records: groupedByDay[date].records,
-    totalValue: groupedByDay[date].totalValue,
-  }));
-}
-
-export type GroupedByYear = {
-  type: "year";
-  date:string;
-  dayNames:string
-  weeek:string
-  month:string
-  records: GroupedRecord[];
-  totalValue: number;
-};
-
-export function groupRecordsByYear(
-  records: GroupedRecord[] | undefined
-): GroupedByYear[] {
-  const groupedByYear: {
-    [year: string]: { records: GroupedRecord[]; totalValue: number };
-  } = {};
-
-  records?.forEach((record) => {
-    const year = record.date.split("-")[0]; // Extract year from date string (YYYY-MM-DD)
-
-    if (!groupedByYear[year]) {
-      groupedByYear[year] = { records: [], totalValue: 0 };
-    }
-    groupedByYear[year].records.push(record);
-
-    groupedByYear[year].totalValue += record.totalValue;
-  });
-
-  return Object.keys(groupedByYear).map((year) => ({
-    type: "year",
-    date: '',
-    dayNames:'',
-    weeek:'',
-    month:'',
-    year,
-    records: groupedByYear[year].records,
-    totalValue: groupedByYear[year].totalValue,
+    dayName,
+    records: groupedByDay[dayName].records,
+    totalValue: groupedByDay[dayName].totalValue,
   }));
 }
 

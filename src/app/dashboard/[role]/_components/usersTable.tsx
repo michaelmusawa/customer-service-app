@@ -1,5 +1,6 @@
 "use client";
 
+import { availableCounters } from "@/app/lib/data";
 import { OnlineUser, User } from "@/app/lib/definitions";
 import ArchiveModel from "@/components/ArchiveModel";
 import EllipsisIcon from "@/components/icons/ellipsisIcon";
@@ -26,7 +27,7 @@ export default function UsersTable({
   interface ShiftAndCounter {
     userId: string;
     shift: string;
-    counter: number;
+    counter: string;
   }
   
   let localUsers;
@@ -41,7 +42,7 @@ export default function UsersTable({
   const [shiftAndCounter, setShiftAndCounter] = useState<ShiftAndCounter>({
     userId: "",
     shift: "Shift 1",
-    counter: 1,
+    counter: "1A",
   });
   const [showArchiveModel, setShowArchiveModel] = useState<boolean>(false);
   const [userArchivedId, setUserArchivedId] = useState<string>("");
@@ -107,6 +108,21 @@ export default function UsersTable({
     (currentPage - 1) * rowsPerPage,
     currentPage * rowsPerPage
   );
+
+  const [selectedShift, setSelectedShift] = useState('');
+        const [counters, setCounters] = useState<string[]>([]);
+        const [loading, setLoading] = useState(true);
+      
+        useEffect(() => {
+          const fetchCounters = async () => {
+            setLoading(true);
+            const data = await availableCounters(selectedShift);
+            setCounters(data);
+            setLoading(false);
+          };
+      
+          fetchCounters();
+        }, [selectedShift]);
 
   function ActionMenu({ userId }: { userId: string }) {
     return (
@@ -296,11 +312,14 @@ export default function UsersTable({
                                 name="shift"
                                 id="shift"
                                 value={shiftAndCounter.shift}
-                                onChange={(e) =>
+                                onChange={(e) => {
                                   setShiftAndCounter((prev) => ({
                                     ...prev,
                                     shift: e.target.value,
                                   }))
+                                  setSelectedShift(e.target.value);
+                                }
+                                  
                                 }
                               >
                                 <option value="shift 1">Shift 1</option>
@@ -314,29 +333,29 @@ export default function UsersTable({
                             {editShiftAndCounter &&
                             editShiftAndCounterId === user.id ? (
                               <select
-                                className="border-0 bg-transparent p-0 !max-w-10 m-auto text-gray-700"
+                                className="border-0 bg-transparent p-0 m-auto text-gray-700"
                                 name="counter"
                                 value={shiftAndCounter.counter}
                                 onChange={(e) =>
                                   setShiftAndCounter((prev) => ({
                                     ...prev,
-                                    counter: +e.target.value,
+                                    counter: e.target.value,
                                   }))
                                 }
                                 id="counter"
                               >
-                                {Array.from(
-                                  { length: 20 },
-                                  (_, i) => i + 1
-                                ).map((counter) => (
-                                  <option
-                                    key={counter}
-                                    value={counter}
-                                    className="!max-w-[0.3px]"
-                                  >
-                                    {counter}
+                                 {loading ? (
+                                    <option className="!max-w-[0.3px]">
+                                    loading...
                                   </option>
-                                ))}
+                                  ): (
+                                    counters?.map((counter) => (
+                                      <option key={counter} value={counter} className="!max-w-[0.3px]">
+                                        {counter}
+                                      </option>
+                                      
+                                                                      ))
+                                  )}
                               </select>
                             ) : (
                               <span>{user.counter ?? "Not assigned"}</span>

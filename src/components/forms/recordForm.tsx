@@ -34,7 +34,7 @@ export default function RecordForm({
   role: string;
   userId: string;
   shift: string | undefined;
-  counter: number | undefined;
+  counter: string | undefined;
   record: Record | undefined;
 }) {
 

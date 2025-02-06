@@ -1,6 +1,6 @@
 import { BanknotesIcon, InboxIcon } from "@heroicons/react/24/outline";
 import { lusitana } from "@/app/fonts/fonts";
-import { GroupedByDay, GroupedByWeek, GroupedByYear } from "@/app/lib/utils";
+import { GroupedByDay, GroupedByHour, GroupedByWeek } from "@/app/lib/utils";
 import { GroupedByMonth } from "@/app/dashboard/(overview)/page";
 import { getServiceStats } from "@/app/lib/data";
 
@@ -16,27 +16,27 @@ export function Card({
   type,
 }: {
   title: string;
-  value: GroupedByDay[] | GroupedByWeek[] | GroupedByMonth[] | GroupedByYear[];
+  value: GroupedByDay[] | GroupedByWeek[] | GroupedByMonth[] | GroupedByHour[];
   type: "records" | "invoice" | "services";
 }) {
   const Icon = iconMap[type];
 
   function getTotalNumberOfRecords(
-    records: GroupedByDay[] | GroupedByWeek[] | GroupedByMonth[] | GroupedByYear[]
+    records: GroupedByDay[] | GroupedByWeek[] | GroupedByMonth[] | GroupedByHour[]
   ): number {
     const services = getServiceStats(records);
     return services.reduce((total, entry) => total + entry.count, 0);
   }
 
   function getTotalValue(
-    records: GroupedByDay[] | GroupedByWeek[] | GroupedByMonth[] | GroupedByYear[]
+    records: GroupedByDay[] | GroupedByWeek[] | GroupedByMonth[] | GroupedByHour[]
   ): number {
     const services = getServiceStats(records);
     return services.reduce((total, entry) => total + entry.totalValue, 0);
   }
 
   function getTypesOfServices(
-    records: GroupedByDay[] | GroupedByWeek[] | GroupedByMonth[] | GroupedByYear[]
+    records: GroupedByDay[] | GroupedByWeek[] | GroupedByMonth[] | GroupedByHour[]
   ): number {
     const services = getServiceStats(records);
     return services.length;

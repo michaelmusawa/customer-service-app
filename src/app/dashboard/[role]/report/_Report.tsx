@@ -9,7 +9,10 @@ import React, { useEffect, useMemo, useState } from "react";
 
 export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedRecords: Record[], editedRecords: EditedRecord[]; }) {
 
- const records = mergeRecordsWithEdits(fetchedRecords ?? [], editedRecords ?? []);
+  const records = useMemo(
+    () => mergeRecordsWithEdits(fetchedRecords ?? [], editedRecords ?? []),
+    [fetchedRecords, editedRecords]
+  );
 
   const [analysisType, setAnalysisType] = useState<string>("year");
   const [recordType, setRecordType] = useState<string>("invoice");
@@ -189,6 +192,10 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
     // Save the PDF with the date in the filename
     doc.save(`service_report_${station}_${formattedDate}.pdf`);
   };
+
+  
+console.log("sorted records",sortedGroupedRecords)
+
   
   
  

@@ -63,6 +63,9 @@ export default function RecordsTable({
 
   const useRecords = mergeRecordsWithEdits(localRecords ?? [], localEditedRecords ?? []);
 
+  console.log("local",localRecords)
+  console.log("local edit",localEditedRecords)
+
 
   const filteredRecords = useRecords?.filter((record) => {
     const recordDate = new Date(record.recordCreatedAt);

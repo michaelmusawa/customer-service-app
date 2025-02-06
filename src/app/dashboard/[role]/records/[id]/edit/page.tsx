@@ -39,7 +39,7 @@ export default async function EditRecordPage({
       role={session.user.role}
       userId={record?.userId || ""}
       record={record}
-      counter={undefined}
+      counter={record?.counter}
     />
   );
 }

@@ -40,6 +40,7 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
       shift: string;
       count: number;
       totalValue: number;
+      counter:string;
     };
   };
 
@@ -59,13 +60,14 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
 
   const groupedRecords = useMemo(() => {
     return useRecords?.reduce((acc: GroupedRecords, record) => {
-      const key = rankBy === "service" ? `${record.service}-${record.shift}` : `${record.userName}-${record.shift}`;
+      const key = rankBy === "service" ? `${record.service}-${record.shift}` : `${record.userName}-${record.shift}-${record.counter}`;
   
       if (!acc[key]) {
-        acc[key] = { count: 0, totalValue: 0, shift: record.shift };
+        acc[key] = { count: 0, totalValue: 0, shift: record.shift, counter: record.counter };
       }
       acc[key].count += 1;
       acc[key].totalValue += record.value;
+      acc[key].counter;
       return acc;
     }, {} as GroupedRecords);
   }, [useRecords, rankBy]);

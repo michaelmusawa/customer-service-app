@@ -284,38 +284,32 @@ export function groupRecordsByDay(
   }));
 }
 
+export interface G{
+  startDate:Date;
+  endDate:Date|null
+}
 
 export function filterRecordsByTimeRange(
   records: Record[],
-  range: string
+  range: G
 ): Record[] {
-  const now = new Date();
-  let startDate: Date;
+  const startDate = new Date(range.startDate);
+  const endDate = range.endDate;
+  console.log(startDate+" to "+endDate)
+  return records.filter((record) => {
+    const recordDate = new Date(record.recordCreatedAt);
 
-  switch (range) {
-    case "year":
-      startDate = new Date(now.getFullYear(), 0, 1); // January 1st of the current year
-      break;
-    case "month":
-      startDate = new Date(now.getFullYear(), now.getMonth(), 1); // 1st day of the current month
-      break;
-    case "week":
-      const dayOfWeek = now.getDay();
-      startDate = new Date(now);
-      startDate.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1)); // Adjust for Monday as start of week
-      startDate.setHours(0, 0, 0, 0); // Reset to start of the day
-      break;
-    case "day":
-      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Start of today
-      break;
-    default:
-      throw new Error("Invalid range specified");
-  }
-
-  return records?.filter(
-    (record) => new Date(record.recordCreatedAt) >= startDate
-  );
+    // If endDate is provided, check both startDate and endDate
+    if (endDate) {
+      return recordDate >= startDate && recordDate <= endDate;
+    } else {
+      // If endDate is null, only check if recordDate is greater than or equal to startDate
+      return recordDate >= startDate;
+    }
+  });
 }
+
+
 
 type Accumulator = {
   [userName: string]: {

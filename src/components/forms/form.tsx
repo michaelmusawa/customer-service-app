@@ -46,8 +46,8 @@ export default function UserForm({
 
 
   const [shiftAndCounter, setShiftAndCounter] = useState<ShiftAndCounter>({
-      shift: "Shift 1",
-      counter: "1A",
+      shift: "",
+      counter: "",
     });
 
       const [selectedShift, setSelectedShift] = useState('');
@@ -162,12 +162,13 @@ export default function UserForm({
                                     
                                   }
                                 >
+                                  <option value="">Select shift</option>
                                   <option value="shift 1">Shift 1</option>
                                   <option value="shift 2">Shift 2</option>
                                 </select>
             
           </div>
-          <div className="flex justify-center gap-2 items-center flex-1 relative">
+          {shiftAndCounter.shift!==""&&<div className="flex justify-center gap-2 items-center flex-1 relative">
             <p className="text-gray-500">Counter:</p>
           <select
                                   className="p-2 pl-8"
@@ -187,16 +188,20 @@ export default function UserForm({
                                   </option>
                                   ): (
                                     counters?.map((counter) => (
+                                      <>
+                                       
                                       <option key={counter} value={counter} className="!max-w-[0.3px]">
                                         {counter}
-                                      </option>
+                                      </option></>
+                                     
                                       
                                                                       ))
                                   )}
                                  
                                 </select>
           
-        </div></div>
+        </div>}
+          </div>
             
           )
         )}

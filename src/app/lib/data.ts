@@ -348,7 +348,7 @@ export function formatTime(date: Date) {
 // }
 
 export const availableCounters = async( targetShift: string) => {
-
+  const counters = []
   const users = await fetchUsers("attendant");
   const allCounters = Array.from({ length: 20 }, (_, i) => i + 1)
     .flatMap((counter) => [`${counter}A`, `${counter}B`]);
@@ -359,7 +359,9 @@ export const availableCounters = async( targetShift: string) => {
       .filter((user) => user.shift === targetShift) // Filter users by the same shift
       .map((user) => user.counter) // Extract their counters
   );
-
+  console.log(targetShift)
   // Return only unassigned counters for the target shift
-  return allCounters.filter((counter) => !assignedCounters.has(counter));
+  const a = allCounters.filter((counter) => !assignedCounters.has(counter));
+  console.log(a)
+  return a;
 };

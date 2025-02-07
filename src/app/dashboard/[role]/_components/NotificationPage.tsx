@@ -36,6 +36,8 @@ const NotificationPage: React.FC<NotificationProps> = ({
     attendants,
   };
 
+  console.log("the edit requests", editRequests)
+
   const searchParams = useSearchParams();
   const edit = searchParams.get("edit");
 
@@ -201,6 +203,8 @@ const NotificationPage: React.FC<NotificationProps> = ({
       }
     }
   }, [recordToEdit, records]);
+
+  console.log(viewEditRequest);
 
   return (
     <div className="notification-page p-6 bg-gray-100 min-h-screen">
@@ -398,20 +402,23 @@ const NotificationPage: React.FC<NotificationProps> = ({
                   <>
                     <div className="flex flex-col h-[90%] border">
                       <p className="text-sm m-2 text-gray-500">Reason:</p>
-                      <p className="h-full w-full p-2 bg-gray-50 text-sm">
+                      <p className="w-full p-2 bg-gray-50 text-sm">
                         {viewEditRequest.reason}
                       </p>
-                    </div>
+                      
+                
                     {viewEditRequest.status === "rejected" && (
                       <div>
                         <p className="ml-1 p-1 text-xs text-gray-500">
                           Supervisor reason for rejection:
                         </p>
                         <p className="h-3/4 w-full bg-gray-50 rounded-lg text-sm p-2">
-                          {viewEditRequest.supervisorComment}
+                        {viewEditRequest.supervisorComment}
                         </p>
                       </div>
+                          
                     )}
+                    </div>
                   </>
                 )}
 

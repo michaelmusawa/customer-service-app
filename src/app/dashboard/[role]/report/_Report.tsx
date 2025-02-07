@@ -2,10 +2,11 @@
 
 import { Stations } from "@/app/lib/data";
 import { EditedRecord, Record } from "@/app/lib/definitions";
-import { filterRecordsByTimeRange, mergeRecordsWithEdits } from "@/app/lib/utils";
+import { filterRecordsByTimeRange, G, mergeRecordsWithEdits } from "@/app/lib/utils";
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import React, { useEffect, useMemo, useState } from "react";
+import DateInfo from "@/components/DateInfo"
 
 export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedRecords: Record[], editedRecords: EditedRecord[]; }) {
 
@@ -14,7 +15,11 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
     [fetchedRecords, editedRecords]
   );
 
-  const [analysisType, setAnalysisType] = useState<string>("year");
+  const [analysisType, setAnalysisType] = useState<G>({
+    startDate: new Date(),
+    endDate: null
+
+  });
   const [recordType, setRecordType] = useState<string>("invoice");
   const [rankBy, setRankBy] = useState<string>("service");
   const [sortOrder, setSortOrder] = useState<string>("totalValue");
@@ -23,6 +28,41 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
   const [recordsOfType, setRecordsOfType] = useState<Record[]>([]);
   const [station, setStation] = useState<string>('Overall');
   const [localRecords, setLocalRecords] = useState<Record[]>([]);
+  const getCurrentDate = (): string => {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are 0-indexed
+    const day = String(date.getDate()).padStart(2, "0");
+  
+    return `${year}-${month}-${day}`;
+  };
+  const [startDate, setStartDate] = useState<string  >(getCurrentDate());
+  const [endDate, setEndDate] = useState<string >("");
+
+
+  useEffect(()=>{
+    if(startDate!=="" && startDate < endDate  ){
+      //alert("working")
+      setAnalysisType({
+        startDate:new Date(startDate),endDate: new Date(endDate)
+      })
+      
+    }else if (startDate === endDate) {
+      // If startDate equals endDate, set endDate to the next day
+      const newEndDate = new Date(startDate);
+      newEndDate.setDate(newEndDate.getDate() + 1); // Add one day to endDate
+  
+      setAnalysisType({
+        startDate: new Date(startDate),
+        endDate: newEndDate,
+      });
+    }
+    else{
+      setAnalysisType({
+        startDate:new Date(startDate),endDate:null
+      })
+    }
+  },[startDate,endDate])
 
   useEffect(() => {
     if (station === 'Overall') {
@@ -194,9 +234,6 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
   };
 
   
-console.log("sorted records",sortedGroupedRecords)
-
-  
   
  
 
@@ -242,10 +279,29 @@ console.log("sorted records",sortedGroupedRecords)
               <option value="invoice">Invoice</option>
             </select>
           </div>
-          <div className="flex items-center justify-items-end text-sm font-semibold uppercase">
+          <div className="flex flex-col items-center justify-items-end text-sm font-semibold uppercase">
             <label htmlFor="analysisType" className="flex-1 mr-2">
-              Analysis Type:
+              filter period:
             </label>
+            {/*<DateInfo/>*/}
+            <fieldset className="flex  border bg-gray-50 shadow-sm p-2 text-black rounded-md max-md:w-full">
+              {/* <legend>Date</legend> */}
+             
+              <input
+                type="date"
+                value={startDate || ""}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="border px-1 m-1 text-gray-500 rounded bg-gray-100"
+              />
+              <label className="max-lg:text-sm text-gray-700 mt-2">To</label>
+              <input
+                type="date"
+                value={endDate || ""}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="border px-1 m-1 text-gray-500 rounded bg-gray-100"
+              />
+            </fieldset>
+            {/*
             <select
               id="analysisType"
               value={analysisType}
@@ -257,7 +313,9 @@ console.log("sorted records",sortedGroupedRecords)
               <option value="week">This week</option>
               <option value="day">Today</option>
             </select>
+            */}
           </div>
+          
         </div>
 
         <div className="flex justify-between mt-4 max-w-screen-md mx-auto bg-green-700 border p-2 rounded-lg">
@@ -336,7 +394,7 @@ console.log("sorted records",sortedGroupedRecords)
         <tbody>
         {sortedGroupedRecords ? (
   sortedGroupedRecords
-    .filter((record) => record.shift === "shift 1")
+    .filter((record) => record.shift.toLowerCase() === "shift 1")
     .map((record, index: number) => (
               <tr key={index}>
                 <td className="border px-4 py-2 text-center">{index + 1}</td>
@@ -378,7 +436,7 @@ console.log("sorted records",sortedGroupedRecords)
         <tbody>
         {sortedGroupedRecords ? (
   sortedGroupedRecords
-    .filter((record) => record.shift === "shift 2")
+    .filter((record) => record.shift.toLowerCase() === "shift 2")
     .map((record, index: number) => (
               <tr key={index}>
                 <td className="border px-4 py-2 text-center">{index + 1}</td>

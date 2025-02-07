@@ -841,6 +841,7 @@ export async function editRequestEditRecord(
   prevState: RequestEditRecordState,
   formData: FormData
 ) {
+
   const validatedFields = RequestEditRecordSchema.safeParse({
     supervisorId: formData.get("supervisorId"),
     supervisorComment: formData.get("supervisorComment"),
@@ -1058,6 +1059,7 @@ export async function fetchRequestEditRecordsByUser(id: string) {
           r.attendantId,
           r.status,
           r.attendantComment,
+          r.supervisorComment,
           r.createdAt AS editedRecordCreatedAt,
           r.updatedAt AS editedRecordUpdatedAt,
           u.id AS userId,

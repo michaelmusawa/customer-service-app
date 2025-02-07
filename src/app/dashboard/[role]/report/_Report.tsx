@@ -87,6 +87,7 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
         name,
         shift,
         count: data.count,
+        counter: data.counter,
         totalValue: data.totalValue,
       };
     });
@@ -332,6 +333,7 @@ console.log("sorted records",sortedGroupedRecords)
               {rankBy === "service" ? "Service Category" : "Biller"}
             </th>
             <th className="border px-4 py-2">Number Served</th>
+            <th className="border px-4 py-2">{rankBy!=="service"&&"counter"}</th>
             <th className="border px-4 py-2">Total Value</th>
           </tr>
         </thead>
@@ -344,6 +346,7 @@ console.log("sorted records",sortedGroupedRecords)
                 <td className="border px-4 py-2 text-center">{index + 1}</td>
                 <td className="border px-4 py-2">{record.name}</td>
                 <td className="border px-4 py-2">{record.count}</td>
+                <td  className="border px-4 py-2">{rankBy!=="service"&&  record.counter}</td>
                 <td className="border px-4 py-2">
                   {record.totalValue.toLocaleString("en-US")}/=
                 </td>

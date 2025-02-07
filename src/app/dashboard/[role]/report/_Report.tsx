@@ -67,9 +67,13 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
   useEffect(() => {
     if (station === 'Overall') {
       setLocalRecords(records);
-    } else {
-     const filteredLocalRecords = records?.filter(record => record.userStation === station);
+    } else if( station === "Starehe") {
+     const filteredLocalRecords = records?.filter(record => record.userStation === "Starehe");
      setLocalRecords(filteredLocalRecords)
+    } else if ( station === "Dandora"){
+      const filteredLocalRecords = records?.filter(record => record.userStation === "Dandora");
+     setLocalRecords(filteredLocalRecords)
+
     }
     
   }, [station, records])
@@ -143,6 +147,7 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
       { totalServed: 0, totalValue: 0 }
     );
   }, [groupedRecords]);
+
   
 
   const generatePDF = () => {
@@ -232,10 +237,12 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
     // Save the PDF with the date in the filename
     doc.save(`service_report_${station}_${formattedDate}.pdf`);
   };
-
   
+<<<<<<< HEAD
   
  
+=======
+>>>>>>> 971aec4561848152587bbaecaa92641e3ec1b01d
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
@@ -377,7 +384,7 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
         </div>
       </div>
 
-      <h4 className="my-4 text-center">Shift 1</h4>
+      <h4 className="my-4 text-center">Shift 1</h4>     
 
       {/* Table of shift 1 */}
       <table className="min-w-full bg-white border">

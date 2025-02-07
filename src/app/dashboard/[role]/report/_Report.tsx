@@ -27,9 +27,13 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
   useEffect(() => {
     if (station === 'Overall') {
       setLocalRecords(records);
-    } else {
-     const filteredLocalRecords = records?.filter(record => record.userStation === station);
+    } else if( station === "Starehe") {
+     const filteredLocalRecords = records?.filter(record => record.userStation === "Starehe");
      setLocalRecords(filteredLocalRecords)
+    } else if ( station === "Dandora"){
+      const filteredLocalRecords = records?.filter(record => record.userStation === "Dandora");
+     setLocalRecords(filteredLocalRecords)
+
     }
     
   }, [station, records])
@@ -103,6 +107,7 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
       { totalServed: 0, totalValue: 0 }
     );
   }, [groupedRecords]);
+
   
 
   const generatePDF = () => {
@@ -192,13 +197,7 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
     // Save the PDF with the date in the filename
     doc.save(`service_report_${station}_${formattedDate}.pdf`);
   };
-
   
-console.log("sorted records",sortedGroupedRecords)
-
-  
-  
- 
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
@@ -319,7 +318,7 @@ console.log("sorted records",sortedGroupedRecords)
         </div>
       </div>
 
-      <h4 className="my-4 text-center">Shift 1</h4>
+      <h4 className="my-4 text-center">Shift 1</h4>     
 
       {/* Table of shift 1 */}
       <table className="min-w-full bg-white border">
@@ -336,7 +335,7 @@ console.log("sorted records",sortedGroupedRecords)
         <tbody>
         {sortedGroupedRecords ? (
   sortedGroupedRecords
-    .filter((record) => record.shift === "shift 1")
+    .filter((record) => record.shift.toLowerCase() === "shift 1")
     .map((record, index: number) => (
               <tr key={index}>
                 <td className="border px-4 py-2 text-center">{index + 1}</td>
@@ -378,7 +377,7 @@ console.log("sorted records",sortedGroupedRecords)
         <tbody>
         {sortedGroupedRecords ? (
   sortedGroupedRecords
-    .filter((record) => record.shift === "shift 2")
+    .filter((record) => record.shift.toLowerCase() === "shift 2")
     .map((record, index: number) => (
               <tr key={index}>
                 <td className="border px-4 py-2 text-center">{index + 1}</td>

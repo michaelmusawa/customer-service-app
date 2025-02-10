@@ -11,7 +11,7 @@ export default async function UserActions() {
 
   let user;
   if (session) {
-    user = await getUserById(session?.user.id);
+    user = await getUserById(session?.user?.id);
   }
 
   const onlineUsers = await fetchOnlineUsers();
@@ -21,7 +21,7 @@ export default async function UserActions() {
     <div>
       {session ? (
         <div className="flex items-center mr-10">
-          {session.user.role === "attendant" ? (
+          {session?.user?.role === "attendant" ? (
             <div className="border rounded-lg mr-6 text-sm flex px-2">
               <div className="font-semibold">
                 <p>Shift: </p>
@@ -38,7 +38,7 @@ export default async function UserActions() {
             )
           )}
 
-          {session.user.role !== "admin" && (
+          {session?.user?.role !== "admin" && (
             <Link href={`/dashboard/${session.user.role}/notification`}>
               <div className="flex justify-center w-10 mr-6">
                 <NotificationIcon />

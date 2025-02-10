@@ -348,7 +348,6 @@ export function formatTime(date: Date) {
 // }
 
 export const availableCounters = async( targetShift: string) => {
-  const counters = []
   const users = await fetchUsers("attendant");
   const allCounters = Array.from({ length: 20 }, (_, i) => i + 1)
     .flatMap((counter) => [`${counter}A`, `${counter}B`]);

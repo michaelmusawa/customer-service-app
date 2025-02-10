@@ -6,7 +6,7 @@ import { filterRecordsByTimeRange, G, mergeRecordsWithEdits } from "@/app/lib/ut
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import React, { useEffect, useMemo, useState } from "react";
-import DateInfo from "@/components/DateInfo"
+
 
 export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedRecords: Record[], editedRecords: EditedRecord[]; }) {
 
@@ -358,6 +358,7 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
           >
             <option value="service">Service</option>
             <option value="biller">Biller</option>
+            <option value="biller-ranked">Biller ranked</option>
           </select>
         </div>
 
@@ -377,89 +378,136 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
         </div>
       </div>
 
-      <h4 className="my-4 text-center">Shift 1</h4>
 
-      {/* Table of shift 1 */}
-      <table className="min-w-full bg-white border">
-        <thead className="bg-green-100">
-          <tr>
-            <th className="border px-4 py-2">No.</th>
-            <th className="border px-4 py-2">
-              {rankBy === "service" ? "Service Category" : "Biller"}
-            </th>
-            <th className="border px-4 py-2">Number Served</th>
-            <th className="border px-4 py-2">Total Value</th>
-          </tr>
-        </thead>
-        <tbody>
-        {sortedGroupedRecords ? (
-  sortedGroupedRecords
-    .filter((record) => record.shift.toLowerCase() === "shift 1")
-    .map((record, index: number) => (
-              <tr key={index}>
-                <td className="border px-4 py-2 text-center">{index + 1}</td>
-                <td className="border px-4 py-2">{record.name}</td>
-                <td className="border px-4 py-2">{record.count}</td>
-                <td className="border px-4 py-2">
-                  {record.totalValue.toLocaleString("en-US")}/=
-                </td>
-              </tr>
-            ))
-          ):(
-            <tr>
-                <td
-                  colSpan={4}
-                  className="text-center py-4"
-                >
-                  No records found!
-                </td>
-              </tr>
-          )}
-         
-        </tbody>
-      </table>
+      {rankBy === "biller-ranked" ? ( 
+  
+         <table className="min-w-full bg-white border">
+           <thead className="bg-green-100">
+             <tr>
+               <th className="border px-4 py-2">No.</th>
+               <th className="border px-4 py-2">
+                 Biller
+               </th>
+               <th className="border px-4 py-2">Number Served</th>
+               <th className="border px-4 py-2">Total Value</th>
+             </tr>
+           </thead>
+           <tbody>
+           {sortedGroupedRecords ? (
+     sortedGroupedRecords
+       .map((record, index: number) => (
+                 <tr key={index}>
+                   <td className="border px-4 py-2 text-center">{index + 1}</td>
+                   <td className="border px-4 py-2">{record.name}</td>
+                   <td className="border px-4 py-2">{record.count}</td>
+                   <td className="border px-4 py-2">
+                     {record.totalValue.toLocaleString("en-US")}/=
+                   </td>
+                 </tr>
+               ))
+             ):(
+               <tr>
+                   <td
+                     colSpan={4}
+                     className="text-center py-4"
+                   >
+                     No records found!
+                   </td>
+                 </tr>
+             )}
+            
+           </tbody>
+         </table>
+         ): (
 
-<h4 className="my-4 text-center">Shift 2</h4>
+          <>
+         <h4 className="my-4 text-center">Shift 1</h4>
 
-      {/* Table of shift 2*/}
-      <table className="min-w-full bg-white border">
-        <thead className="bg-green-100">
-          <tr>
-            <th className="border px-4 py-2">No.</th>
-            <th className="border px-4 py-2">
-              {rankBy === "service" ? "Service Category" : "Biller"}
-            </th>
-            <th className="border px-4 py-2">Number Served</th>
-            <th className="border px-4 py-2">Total Value</th>
-          </tr>
-        </thead>
-        <tbody>
-        {sortedGroupedRecords ? (
-  sortedGroupedRecords
-    .filter((record) => record.shift.toLowerCase() === "shift 2")
-    .map((record, index: number) => (
-              <tr key={index}>
-                <td className="border px-4 py-2 text-center">{index + 1}</td>
-                <td className="border px-4 py-2">{record.name}</td>
-                <td className="border px-4 py-2">{record.count}</td>
-                <td className="border px-4 py-2">
-                  {record.totalValue.toLocaleString("en-US")}/=
-                </td>
-              </tr>
-            ))
-          ):(
-            <tr>
-                <td
-                  colSpan={4}
-                  className="text-center py-4"
-                >
-                  No records found!
-                </td>
-              </tr>
-          )}
-         
-        </tbody>
-      </table>
+     
+         <table className="min-w-full bg-white border">
+           <thead className="bg-green-100">
+             <tr>
+               <th className="border px-4 py-2">No.</th>
+               <th className="border px-4 py-2">
+                 {rankBy === "service" ? "Service Category" : "Biller"}
+               </th>
+               <th className="border px-4 py-2">Number Served</th>
+               <th className="border px-4 py-2">Total Value</th>
+             </tr>
+           </thead>
+           <tbody>
+           {sortedGroupedRecords ? (
+     sortedGroupedRecords
+       .filter((record) => record.shift.toLowerCase() === "shift 1")
+       .map((record, index: number) => (
+                 <tr key={index}>
+                   <td className="border px-4 py-2 text-center">{index + 1}</td>
+                   <td className="border px-4 py-2">{record.name}</td>
+                   <td className="border px-4 py-2">{record.count}</td>
+                   <td className="border px-4 py-2">
+                     {record.totalValue.toLocaleString("en-US")}/=
+                   </td>
+                 </tr>
+               ))
+             ):(
+               <tr>
+                   <td
+                     colSpan={4}
+                     className="text-center py-4"
+                   >
+                     No records found!
+                   </td>
+                 </tr>
+             )}
+            
+           </tbody>
+         </table>
+   
+   <h4 className="my-4 text-center">Shift 2</h4>
+   
+         {/* Table of shift 2*/}
+         <table className="min-w-full bg-white border">
+           <thead className="bg-green-100">
+             <tr>
+               <th className="border px-4 py-2">No.</th>
+               <th className="border px-4 py-2">
+                 {rankBy === "service" ? "Service Category" : "Biller"}
+               </th>
+               <th className="border px-4 py-2">Number Served</th>
+               <th className="border px-4 py-2">Total Value</th>
+             </tr>
+           </thead>
+           <tbody>
+           {sortedGroupedRecords ? (
+     sortedGroupedRecords
+       .filter((record) => record.shift.toLowerCase() === "shift 2")
+       .map((record, index: number) => (
+                 <tr key={index}>
+                   <td className="border px-4 py-2 text-center">{index + 1}</td>
+                   <td className="border px-4 py-2">{record.name}</td>
+                   <td className="border px-4 py-2">{record.count}</td>
+                   <td className="border px-4 py-2">
+                     {record.totalValue.toLocaleString("en-US")}/=
+                   </td>
+                 </tr>
+               ))
+             ):(
+               <tr>
+                   <td
+                     colSpan={4}
+                     className="text-center py-4"
+                   >
+                     No records found!
+                   </td>
+                 </tr>
+             )}
+            
+           </tbody>
+         </table>
+         </>
+      )}
+
+     
 
 
 

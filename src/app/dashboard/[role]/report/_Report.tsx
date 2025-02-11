@@ -79,6 +79,7 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
     [key: string]: {
       shift: string;
       count: number;
+      counter: string;
       totalValue: number;
     };
   };
@@ -99,17 +100,18 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
 
   const groupedRecords = useMemo(() => {
     return useRecords?.reduce((acc: GroupedRecords, record) => {
-      const key = rankBy === "service" ? `${record.service}-${record.shift}` : `${record.userName}-${record.shift}`;
+      const key = rankBy === "service" ? `${record.service}-${record.shift}-${record.counter}` : `${record.userName}-${record.shift}-${record.counter}`;
   
       if (!acc[key]) {
-        acc[key] = { count: 0, totalValue: 0, shift: record.shift };
+        acc[key] = { count: 0, totalValue: 0, shift: record.shift, counter: record.counter };
       }
       acc[key].count += 1;
+      acc[key].counter;
       acc[key].totalValue += record.value;
       return acc;
     }, {} as GroupedRecords);
   }, [useRecords, rankBy]);
-  
+   console.log(groupedRecords)
   const sortedGroupedRecords = useMemo(() => {
     if (!groupedRecords) return;
   
@@ -125,6 +127,7 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
         name,
         shift,
         count: data.count,
+        counter: data.counter,
         totalValue: data.totalValue,
       };
     });
@@ -389,6 +392,7 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
                  Biller
                </th>
                <th className="border px-4 py-2">Number Served</th>
+               <th className="border px-4 py-2">counter</th>
                <th className="border px-4 py-2">Total Value</th>
              </tr>
            </thead>
@@ -400,6 +404,7 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
                    <td className="border px-4 py-2 text-center">{index + 1}</td>
                    <td className="border px-4 py-2">{record.name}</td>
                    <td className="border px-4 py-2">{record.count}</td>
+                   <td className="border px-4 py-2">{record.counter}</td>
                    <td className="border px-4 py-2">
                      {record.totalValue.toLocaleString("en-US")}/=
                    </td>
@@ -432,6 +437,7 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
                  {rankBy === "service" ? "Service Category" : "Biller"}
                </th>
                <th className="border px-4 py-2">Number Served</th>
+               {rankBy=="biller"&&<th className="border px-4 py-2">counter</th>}
                <th className="border px-4 py-2">Total Value</th>
              </tr>
            </thead>
@@ -444,6 +450,7 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
                    <td className="border px-4 py-2 text-center">{index + 1}</td>
                    <td className="border px-4 py-2">{record.name}</td>
                    <td className="border px-4 py-2">{record.count}</td>
+                   <td className="border px-4 py-2">{record.counter}</td>
                    <td className="border px-4 py-2">
                      {record.totalValue.toLocaleString("en-US")}/=
                    </td>
@@ -474,6 +481,7 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
                  {rankBy === "service" ? "Service Category" : "Biller"}
                </th>
                <th className="border px-4 py-2">Number Served</th>
+               {rankBy=="biller"&&<th className="border px-4 py-2">counter</th>}
                <th className="border px-4 py-2">Total Value</th>
              </tr>
            </thead>
@@ -486,6 +494,7 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
                    <td className="border px-4 py-2 text-center">{index + 1}</td>
                    <td className="border px-4 py-2">{record.name}</td>
                    <td className="border px-4 py-2">{record.count}</td>
+                   <td className="border px-4 py-2">{record.counter}</td>
                    <td className="border px-4 py-2">
                      {record.totalValue.toLocaleString("en-US")}/=
                    </td>
@@ -522,3 +531,4 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
     </div>
   );
 }
+

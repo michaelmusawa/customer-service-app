@@ -152,12 +152,23 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
     const doc = new jsPDF();
     let yPos = 20;
   
-    // Add the logo at the top (Make sure the logo URL or base64 image is available)
     const logo = "/images/county.png"; // Replace with actual base64 or URL
-    doc.addImage(logo, "PNG", 80, yPos, 50, 20); // Adjust size and position
-    yPos += 30;
 
-    console.log("the dam logo",logo)
+    // Logo (left side)
+    const logoX = 20; // Left-aligned
+    const logoY = 20;
+    const logoWidth = 30;
+    const logoHeight = 30;
+    
+    doc.addImage(logo, "PNG", logoX, logoY, logoWidth, logoHeight);
+    
+    // Header text (right side)
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    const textX = logoX + logoWidth + 10; // Position text after logo
+    const textY = logoY + 10; // Align text with the middle of the logo
+    doc.text("NAIROBI CITY COUNTY", textX, textY);
+    
   
     // Get the current date
     const currentDate = new Date().toLocaleDateString("en-US", {
@@ -179,7 +190,8 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
     yPos += 15;
   
     // Function to generate table for a given shift
-    const addShiftTable = (shiftLabel, shift) => {
+    
+    const addShiftTable = (shiftLabel:string, shift:string) => {
       doc.text(`${shiftLabel} Summary`, 20, yPos);
       yPos += 10;
   

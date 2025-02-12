@@ -150,50 +150,82 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
 
   const generatePDF = () => {
     const doc = new jsPDF();
+    let pageWidth = doc.internal.pageSize.getWidth(); // Get page width for centering
     let yPos = 20;
-  
+
     const logo = "/images/county.png"; // Replace with actual base64 or URL
 
-    // Logo (left side)
-    const logoX = 20; // Left-aligned
+    // Logo (far left)
+    const logoX = 20; // Far left
     const logoY = 20;
-    const logoWidth = 30;
-    const logoHeight = 30;
-    
+    const logoWidth = 20;
+    const logoHeight = 20;
+
     doc.addImage(logo, "PNG", logoX, logoY, logoWidth, logoHeight);
-    
-    // Header text (right side)
-    doc.setFontSize(16);
+
+    // Header text (centered)
+    doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
-    const textX = logoX + logoWidth + 10; // Position text after logo
-    const textY = logoY + 10; // Align text with the middle of the logo
-    doc.text("NAIROBI CITY COUNTY", textX, textY);
-    
-  
-    // Get the current date
+
+    const titleText = "NAIROBI CITY COUNTY";
+    const titleX = pageWidth / 2 - doc.getTextWidth(titleText) / 2;
+    const titleY = logoY + 5;
+
+    doc.text(titleText, titleX, titleY);
+
+    // Draw gradient line between title and subtitle
+    const lineStartX = (pageWidth / 4) - 3;
+    const lineEndX = ((3 * pageWidth) / 4) -3;
+    const lineY = titleY + 5;
+
+    const gradient = doc.setDrawColor(46, 125, 50); // Start with Green
+    for (let i = 0; i < lineEndX - lineStartX; i += 2) {
+        const ratio = i / (lineEndX - lineStartX);
+        const red = 255 * ratio; // Gradually add red
+        const green = 128 + (127 * (1 - ratio)); // Transition from green to yellow
+        doc.setDrawColor(red, green, 0);
+        doc.line(lineStartX + i, lineY, lineStartX + i + 2, lineY);
+    }
+
+    // Subtitle text (centered)
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+
+    const subtitleText = "INCLUSIVITY, PUBLIC PARTICIPATION, & CUSTOMER SERVICES";
+    const subtitleX = pageWidth / 2 - doc.getTextWidth(subtitleText) / 2;
+    const subtitleY = lineY + 5;
+
+    doc.text(subtitleText, subtitleX, subtitleY);
+
+    // Date (far right)
     const currentDate = new Date().toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
     });
-    
-    // Title of the report
-    doc.setFontSize(16);
-    doc.setFont("helvetica", "bold");
-    doc.text(`Service Report Summary - ${station}`, 20, yPos);
-    yPos += 10;
-  
-    // Add date below the title
-    doc.setFontSize(12);
+
+    doc.setFontSize(6);
     doc.setFont("helvetica", "italic");
-    doc.text(`Date: ${currentDate}`, 20, yPos);
-    yPos += 15;
-  
+    const dateX = pageWidth - doc.getTextWidth(`Date: ${currentDate}`) - 10;
+    const dateY = logoY + 5;
+
+    doc.text(`Date: ${currentDate}`, dateX, dateY);
+
+    yPos = subtitleY + 10; // Move yPos below subtitle
+
+    // Station of the report
+    doc.setFont("helvetica", "bold");
+    doc.text(`Report Summary: ${station}`, dateX, dateY+5);
+
+
     // Function to generate table for a given shift
+
+    yPos += 5;
+    doc.setFontSize(10);
     
-    const addShiftTable = (shiftLabel:string, shift:string) => {
+    const addShiftTable = (shiftLabel, shift) => {
       doc.text(`${shiftLabel} Summary`, 20, yPos);
-      yPos += 10;
+      yPos += 5;
   
       const shiftRecords = sortedGroupedRecords?.filter(record => record.shift === shift) || [];
       if (shiftRecords.length === 0) {
@@ -211,15 +243,30 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
           record.count,
           `${record.totalValue.toLocaleString("en-US")}/=`,
         ]),
+        foot: [
+          [
+            "",
+            "Total",
+            shiftRecords.reduce((sum, record) => sum + record.count, 0),
+            shiftRecords.reduce((sum, record) => sum + record.count, 0),
+            `${shiftRecords.reduce((sum, record) => sum + record.totalValue, 0).toLocaleString("en-US")}/=`,
+          ],
+        ],
         headStyles: {
           fillColor: [46, 125, 50], // Green header
           textColor: [255, 255, 255], // White text
-          fontSize: 12,
+          fontSize: 10,
           fontStyle: "bold",
         },
         bodyStyles: {
-          fontSize: 12,
+          fontSize: 8,
           textColor: [0, 0, 0], // Black text for rows
+        },
+        footStyles: {
+          fillColor: [255, 255, 255], // Green footer
+          textColor: [0, 0, 0], // White text
+          fontSize: 10,
+          fontStyle: "bold",
         },
         margin: { left: 20, right: 20 },
         theme: "grid",
@@ -251,9 +298,23 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
     yPos += 20;
   
     // Footer
+    
+    const footerText = "Let's make Nairobi work"
+    const footerSubText = "© 2025 All rights reserved."
+    const footerX = pageWidth / 2 - doc.getTextWidth(footerText) / 2;
+    const footerSubX = pageWidth / 2 - doc.getTextWidth(footerSubText) / 2;
+    doc.setFont("helvetica", "bold");
+    doc.setFillColor(46, 125, 50); // Green color
+    doc.rect(0, 275, 300, 20 ,'F'); // Draw a filled rectangle as background for the footer
     doc.setFontSize(10);
+    doc.setTextColor("white")
+    doc.text(" Let's make Nairobi work ", footerX, 285);
     doc.setFont("helvetica", "italic");
-    doc.text("Generated by Service Report System", 20, 280);
+    doc.setFontSize(10);
+    doc.text("© 2025 All rights reserved.", footerSubX, 290);
+      // === Thinner Yellow Section, slightly below the green rectangle ===
+    doc.setFillColor(255, 255, 0); // Set color to yellow (RGB)
+    doc.rect(0, 295, 300, 10, 'F'); // Thinner yellow-filled rectangle (y=310 and height=10)
   
     // Format date for filename (YYYY-MM-DD)
     const formattedDate = new Date().toISOString().split("T")[0];
@@ -477,7 +538,7 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
                    <td className="border px-4 py-2 text-center">{index + 1}</td>
                    <td className="border px-4 py-2">{record.name}</td>
                    <td className="border px-4 py-2">{record.count}</td>
-                   <td className="border px-4 py-2">{record.counter}</td>
+                   {rankBy=="biller"&& <td className="border px-4 py-2">{record.counter}</td>}
                    <td className="border px-4 py-2">
                      {record.totalValue.toLocaleString("en-US")}/=
                    </td>
@@ -521,7 +582,7 @@ export default function ReportPage({ fetchedRecords, editedRecords }: { fetchedR
                    <td className="border px-4 py-2 text-center">{index + 1}</td>
                    <td className="border px-4 py-2">{record.name}</td>
                    <td className="border px-4 py-2">{record.count}</td>
-                   <td className="border px-4 py-2">{record.counter}</td>
+                   {rankBy=="biller"&& <td className="border px-4 py-2">{record.counter}</td>}
                    <td className="border px-4 py-2">
                      {record.totalValue.toLocaleString("en-US")}/=
                    </td>

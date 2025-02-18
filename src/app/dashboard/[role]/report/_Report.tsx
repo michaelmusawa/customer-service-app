@@ -182,22 +182,480 @@ export default function ReportPage({
     );
   }, [groupedRecords]);
 
-  const calculateTableTotals = (data: any[]) => {
-    return data.reduce(
-      (acc, record) => ({
-        count: acc.count + record.count,
-        totalValue: acc.totalValue + record.totalValue,
-      }),
-      { count: 0, totalValue: 0 }
-    );
-  };
+  // Generating pdf function
+
+  //  const generatePDF = () => {
+  //   const doc = new jsPDF();
+  //   const pageWidth = doc.internal.pageSize.getWidth();
+  //   let yPos = 20;
+
+  //   const logo = "/images/county.png";
+
+  //   // Logo (far left)
+  //   const logoX = 20; // Far left
+  //   const logoY = 20;
+  //   const logoWidth = 20;
+  //   const logoHeight = 20;
+
+  //   doc.addImage(logo, "PNG", logoX, logoY, logoWidth, logoHeight);
+
+  //   // Header text (centered)
+  //   doc.setFontSize(14);
+  //   doc.setFont("helvetica", "bold");
+
+  //   const titleText = "NAIROBI CITY COUNTY";
+  //   const titleX = pageWidth / 2 - doc.getTextWidth(titleText) / 2;
+  //   const titleY = logoY + 5;
+
+  //   doc.text(titleText, titleX, titleY);
+
+  //   // Draw gradient line between title and subtitle
+  //   const lineStartX = pageWidth / 4 - 3;
+  //   const lineEndX = (3 * pageWidth) / 4 - 3;
+  //   const lineY = titleY + 5;
+
+  //   const gradient = doc.setDrawColor(46, 125, 50); // Start with Green
+  //   for (let i = 0; i < lineEndX - lineStartX; i += 2) {
+  //     const ratio = i / (lineEndX - lineStartX);
+  //     const red = 255 * ratio; // Gradually add red
+  //     const green = 128 + 127 * (1 - ratio); // Transition from green to yellow
+  //     doc.setDrawColor(red, green, 0);
+  //     doc.line(lineStartX + i, lineY, lineStartX + i + 2, lineY);
+  //   }
+
+  //   // Subtitle text (centered)
+  //   doc.setFontSize(8);
+  //   doc.setFont("helvetica", "bold");
+
+  //   const subtitleText =
+  //     "INCLUSIVITY, PUBLIC PARTICIPATION, & CUSTOMER SERVICES";
+  //   const subtitleX = pageWidth / 2 - doc.getTextWidth(subtitleText) / 2;
+  //   const subtitleY = lineY + 5;
+
+  //   doc.text(subtitleText, subtitleX, subtitleY);
+
+  //   // Date (far right)
+  //   const currentDate = new Date().toLocaleDateString("en-US", {
+  //     year: "numeric",
+  //     month: "long",
+  //     day: "numeric",
+  //   });
+
+  //   doc.setFontSize(6);
+  //   doc.setFont("helvetica", "italic");
+  //   const dateX = pageWidth - doc.getTextWidth(`Date: ${currentDate}`) - 10;
+  //   const dateY = logoY + 5;
+
+  //   doc.text(`Date: ${currentDate}`, dateX, dateY);
+
+  //   yPos = subtitleY + 10; // Move yPos below subtitle
+
+  //   // Station of the report
+  //   doc.setFont("helvetica", "bold");
+  //   doc.text(`Report Summary: ${station}`, dateX, dateY + 5);
+
+  //   // Footer drawing function ------------------------------
+  //   const drawFooter = (data: any) => {
+  //     const pageCount = doc.internal.getNumberOfPages();
+  //     const currentPage = data.pageNumber;
+
+  //     // Narrower footer background
+  //     doc.setFillColor(46, 125, 50);
+  //     doc.rect(0, 280, pageWidth, 15, "F"); // Reduced height and position
+
+  //     // Footer text
+  //     doc.setFontSize(10);
+  //     doc.setTextColor("white");
+  //     doc.setFont("helvetica", "bold");
+  //     doc.text(
+  //       "Let's make Nairobi work",
+  //       pageWidth / 2 - doc.getTextWidth("Let's make Nairobi work") / 2,
+  //       288
+  //     );
+
+  //     // Page number
+  //     const pageNumberText = `Page ${currentPage} of ${pageCount}`;
+  //     doc.text(
+  //       pageNumberText,
+  //       pageWidth - doc.getTextWidth(pageNumberText) - 10,
+  //       288
+  //     );
+
+  //     // Thinner yellow section
+  //     doc.setFillColor(255, 255, 0);
+  //     doc.rect(0, 290, pageWidth, 5, "F");
+  //   };
+
+  //   // Deep seek code -------------------------------
+
+  //   // const addTableSection = (
+  //   //   title: string,
+  //   //   data: any[],
+  //   //   columns: string[],
+  //   //   showCounter: boolean
+  //   // ) => {
+  //   //   // Add section title
+  //   //   doc.setFontSize(12).setFont("helvetica", "bold").text(title, 20, yPos);
+  //   //   yPos += 8;
+
+  //   //   doc.autoTable({
+  //   //     startY: yPos,
+  //   //     head: [columns],
+  //   //     body: data.map((record, index) => [
+  //   //       index + 1,
+  //   //       record.name,
+  //   //       record.count,
+  //   //       ...(showCounter ? [record.counter] : []),
+  //   //       `${record.totalValue.toLocaleString("en-US")}/=`
+  //   //     ]),
+  //   //     foot: [[
+  //   //       "",
+  //   //       "Total",
+  //   //       data.reduce((sum, r) => sum + r.count, 0),
+  //   //       ...(showCounter ? ["-"] : []),
+  //   //       `${data.reduce((sum, r) => sum + r.totalValue, 0).toLocaleString("en-US")}/=`
+  //   //     ]],
+  //   //     headStyles: {
+  //   //       fillColor: [46, 125, 50],
+  //   //       textColor: 255,
+  //   //       fontSize: 10,
+  //   //       fontStyle: "bold"
+  //   //     },
+  //   //     bodyStyles: { fontSize: 8 },
+  //   //     footStyles: {
+  //   //       fillColor: [46, 125, 50],
+  //   //       textColor: 255,
+  //   //       fontSize: 10
+  //   //     },
+  //   //     margin: { left: 20, right: 20 },
+  //   //     theme: "grid",
+  //   //     showFoot: 'lastPage',
+  //   //     didDrawPage: drawFooter
+  //   //   });
+
+  //   //   yPos = doc.autoTable.previous.finalY + 15;
+  //   // };
+
+  //   // // End of const add table selection deepseek -----------
+
+  //   //   // Main content tables
+  //   //   if (rankBy === "service") {
+  //   //     addTableSection(
+  //   //       "Shift 1 - Service Summary",
+  //   //       sortedGroupedRecords.byService.filter((r: any) => r.shift === "shift 1"),
+  //   //       ["No.", "Service Category", "Number Served", "Total Value"],
+  //   //       false
+  //   //     );
+  //   //     addTableSection(
+  //   //       "Shift 2 - Service Summary",
+  //   //       sortedGroupedRecords.byService.filter((r: any) => r.shift === "shift 2"),
+  //   //       ["No.", "Service Category", "Number Served", "Total Value"],
+  //   //       false
+  //   //     );
+  //   //   } else if (rankBy === "biller-ranked") {
+  //   //     addTableSection(
+  //   //       "Biller Performance Summary",
+  //   //       sortedGroupedRecords.byUser,
+  //   //       ["No.", "Biller", "Number Served", "Counter", "Total Value"],
+  //   //       true
+  //   //     );
+  //   //   } else {
+  //   //     addTableSection(
+  //   //       "Shift 1 Summary",
+  //   //       sortedGroupedRecords.byUser.filter((r: any) => r.shift === "shift 1"),
+  //   //       ["No.", "Biller", "Number Served", "Counter", "Total Value"],
+  //   //       true
+  //   //     );
+  //   //     addTableSection(
+  //   //       "Shift 2 Summary",
+  //   //       sortedGroupedRecords.byUser.filter((r: any) => r.shift === "shift 2"),
+  //   //       ["No.", "Biller", "Number Served", "Counter", "Total Value"],
+  //   //       true
+  //   //     );
+  //   //   }
+
+  //   // End of main table content -----------------
+
+  //   // Function to generate table for a given shift -------------------
+  //   const addShiftTable = (
+  //     shiftLabel: string,
+  //     shift: string,
+  //     records: typeof sortedGroupedRecords.byUser,
+  //     isServiceTable: boolean = false
+  //   ) => {
+  //     // Add table label
+  //     doc.setFontSize(12);
+  //     doc.setFont("helvetica", "bold");
+  //     doc.text(`${shiftLabel}`, 20, yPos);
+  //     yPos += 8;
+
+  //     const filteredRecords =
+  //       records?.filter((record) => record.shift.toLowerCase() === shift) || [];
+
+  //     // Common table configuration
+  //     const baseTableConfig = {
+  //       headStyles: {
+  //         fillColor: [46, 125, 50],
+  //         textColor: [255, 255, 255],
+  //         fontSize: 10,
+  //         fontStyle: "bold",
+  //       },
+  //       bodyStyles: {
+  //         fontSize: 8,
+  //         textColor: [0, 0, 0],
+  //       },
+  //       footStyles: {
+  //         fillColor: [46, 125, 50],
+  //         textColor: [255, 255, 255],
+  //         fontSize: 10,
+  //         fontStyle: "bold",
+  //       },
+  //       margin: { left: 20, right: 20 },
+  //       theme: "grid",
+  //       didDrawPage: (data) => {
+  //         // Add footer to every page
+  //         const pageCount = doc.internal.getNumberOfPages(); // Total number of pages
+  //         const currentPage = data.pageNumber; // Current page number
+
+  //         // Footer background (green rectangle)
+  //         doc.setFillColor(46, 125, 50); // Green color
+  //         doc.rect(0, 286, pageWidth, 15, "F"); // Draw a filled rectangle as background for the footer
+
+  //         // Footer text
+  //         doc.setFontSize(10);
+  //         doc.setTextColor("white");
+  //         doc.setFont("helvetica", "bold");
+  //         doc.text(
+  //           "Let's make Nairobi work",
+  //           pageWidth / 2 - doc.getTextWidth("Let's make Nairobi work") / 2,
+  //           290
+  //         );
+
+  //         // Footer subtext
+  //         doc.setFontSize(6);
+  //         doc.setFont("helvetica", "italic");
+  //         const footerSubText = "© 2025 All rights reserved.";
+  //         const footerSubX =
+  //           pageWidth / 2 - doc.getTextWidth(footerSubText) / 2;
+  //         doc.text(footerSubText, footerSubX, 293);
+
+  //         // Page number (far right)
+  //         doc.setFont("helvetica", "bold");
+  //         const pageNumberText = `Page ${currentPage} of ${pageCount}`;
+  //         doc.text(
+  //           pageNumberText,
+  //           pageWidth - doc.getTextWidth(pageNumberText) - 10,
+  //           291
+  //         );
+
+  //         // Thinner Yellow Section
+  //         doc.setFillColor(255, 255, 0); // Yellow color
+  //         doc.rect(0, 295, pageWidth, 2, "F"); // Thinner yellow-filled rectangle
+  //       },
+  //     };
+
+  //     if (rankBy === "biller-ranked") {
+  //       doc.autoTable({
+  //         ...baseTableConfig,
+  //         startY: yPos,
+  //         head: [["No.", "Biller", "Number Served", "Counter", "Total Value"]],
+  //         body: records.map((record, index) => [
+  //           index + 1,
+  //           record.name,
+  //           record.count,
+  //           record.counter,
+  //           `${record.totalValue.toLocaleString("en-US")}/=`,
+  //         ]),
+  //         foot: [
+  //           [
+  //             "",
+  //             "Total",
+  //             records.reduce((sum, record) => sum + record.count, 0),
+  //             "-",
+  //             `${records
+  //               .reduce((sum, record) => sum + record.totalValue, 0)
+  //               .toLocaleString("en-US")}/=`,
+  //           ],
+  //         ],
+  //       });
+  //     } else {
+  //       const showCounter = rankBy === "biller" || rankBy === "overall";
+
+  //       doc.autoTable({
+  //         ...baseTableConfig,
+  //         startY: yPos,
+  //         head: [
+  //           [
+  //             "No.",
+  //             rankBy === "service" ? "Service Category" : "Biller",
+  //             "Number Served",
+  //             ...(showCounter ? ["Counter"] : []),
+  //             "Total Value",
+  //           ],
+  //         ],
+  //         body: filteredRecords.map((record, index) => [
+  //           index + 1,
+  //           record.name,
+  //           record.count,
+  //           ...(showCounter ? [record.counter] : []),
+  //           `${record.totalValue.toLocaleString("en-US")}/=`,
+  //         ]),
+  //         foot: [
+  //           [
+  //             "",
+  //             "Total",
+  //             filteredRecords.reduce((sum, record) => sum + record.count, 0),
+  //             ...(showCounter ? ["-"] : []),
+  //             `${filteredRecords
+  //               .reduce((sum, record) => sum + record.totalValue, 0)
+  //               .toLocaleString("en-US")}/=`,
+  //           ],
+  //         ],
+  //       });
+  //     }
+
+  //     yPos = doc.autoTable.previous.finalY + 15;
+  //   };
+
+  //   if (rankBy === "service") {
+  //     // Add Shift 1 Table
+  //     addShiftTable("Shift 1", "shift 1", sortedGroupedRecords.byService);
+
+  //     // Add Shift 2 Table
+  //     addShiftTable("Shift 2", "shift 2", sortedGroupedRecords.byService);
+  //   } else if (rankBy === "biller-ranked") {
+  //     // Add Shift 1 Table
+  //     addShiftTable("Shift 1", "shift 1", sortedGroupedRecords.byUser);
+  //   } else {
+  //     // Add Shift 1 Table
+  //     addShiftTable("Shift 1", "shift 1", sortedGroupedRecords.byUser);
+
+  //     // Add Shift 2 Table
+  //     addShiftTable("Shift 2", "shift 2", sortedGroupedRecords.byUser);
+  //   }
+
+  //   // Add Service Summary Table
+  //   if (rankBy === "overall") {
+  //     doc.autoTable({
+  //       startY: yPos,
+  //       head: [["Service", "Number Served", "Total Value"]],
+  //       body: sortedGroupedRecords.byService.map((record) => [
+  //         record.name,
+  //         record.count,
+  //         `${record.totalValue.toLocaleString("en-US")}/=`,
+  //       ]),
+  //       foot: [
+  //         [
+  //           "Total",
+  //           sortedGroupedRecords.byService.reduce(
+  //             (sum, record) => sum + record.count,
+  //             0
+  //           ),
+  //           `${sortedGroupedRecords.byService
+  //             .reduce((sum, record) => sum + record.totalValue, 0)
+  //             .toLocaleString("en-US")}/=`,
+  //         ],
+  //       ],
+  //       headStyles: {
+  //         fillColor: [46, 125, 50],
+  //         textColor: [255, 255, 255],
+  //         fontSize: 10,
+  //         fontStyle: "bold",
+  //       },
+  //       bodyStyles: {
+  //         fontSize: 8,
+  //         textColor: [0, 0, 0],
+  //       },
+  //       footStyles: {
+  //         fillColor: [46, 125, 50],
+  //         textColor: [255, 255, 255],
+  //         fontSize: 10,
+  //         fontStyle: "bold",
+  //       },
+  //       margin: { left: 20, right: 20 },
+  //       theme: "grid",
+
+  //       didDrawPage: drawFooter,
+  //       //   // Add footer to every page
+  //       //   const pageCount = doc.internal.getNumberOfPages(); // Total number of pages
+  //       //   const currentPage = data.pageNumber; // Current page number
+
+  //       //   // Footer background (green rectangle)
+  //       //   doc.setFillColor(46, 125, 50); // Green color
+  //       //   doc.rect(0, 275, pageWidth, 20, "F"); // Draw a filled rectangle as background for the footer
+
+  //       //   // Footer text
+  //       //   doc.setFontSize(10);
+  //       //   doc.setTextColor("white");
+  //       //   doc.setFont("helvetica", "bold");
+  //       //   const footerText = "Let's make Nairobi work";
+  //       //   const footerX = pageWidth / 2 - doc.getTextWidth(footerText) / 2;
+  //       //   doc.text(footerText, footerX, 285);
+
+  //       //   // Footer subtext
+  //       //   doc.setFont("helvetica", "italic");
+  //       //   const footerSubText = "© 2025 All rights reserved.";
+  //       //   const footerSubX =
+  //       //     pageWidth / 2 - doc.getTextWidth(footerSubText) / 2;
+  //       //   doc.text(footerSubText, footerSubX, 290);
+
+  //       //   // Page number (far right)
+  //       //   doc.setFont("helvetica", "bold");
+  //       //   const pageNumberText = `Page ${currentPage} of ${pageCount}`;
+  //       //   const pageNumberX = pageWidth - doc.getTextWidth(pageNumberText) - 20; // Far right
+  //       //   doc.text(pageNumberText, pageNumberX, 290);
+
+  //       //   // Thinner Yellow Section
+  //       //   doc.setFillColor(255, 255, 0); // Yellow color
+  //       //   doc.rect(0, 295, pageWidth, 10, "F"); // Thinner yellow-filled rectangle
+  //       // },
+  //     });
+
+  //     yPos = doc.autoTable.previous.finalY + 15; // Update Y position after table
+  //   }
+
+  //   // Add final summary section
+  //   doc.setFontSize(14);
+  //   doc.setFont("helvetica", "bold");
+  //   doc.text("Overall Summary", 20, yPos);
+  //   yPos += 10;
+
+  //   const summaryData = [
+  //     ["Total Customers Served:", overallTotals?.totalServed],
+  //     [
+  //       "Total Value:",
+  //       `${overallTotals?.totalValue.toLocaleString("en-US")}/=`,
+  //     ],
+  //     ["Total Invoices/Receipts:", overallTotals?.totalServed],
+  //   ];
+
+  //   doc.autoTable({
+  //     startY: yPos,
+  //     head: [["Metric", "Value"]],
+  //     body: summaryData,
+  //     headStyles: {
+  //       fillColor: [46, 125, 50],
+  //       textColor: [255, 255, 255],
+  //       fontSize: 12,
+  //       fontStyle: "bold",
+  //     },
+  //     bodyStyles: { fontSize: 11 },
+  //     theme: "grid",
+  //   });
+
+  //   // Format date for filename (YYYY-MM-DD)
+  //   const formattedDate = new Date().toISOString().split("T")[0];
+
+  //   // Save the PDF with the date in the filename
+  //   doc.save(`service_report_${station}_${formattedDate}.pdf`);
+  // };
 
   const generatePDF = () => {
     const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth(); // Get page width for centering
+    const pageWidth = doc.internal.pageSize.getWidth();
     let yPos = 20;
 
-    const logo = "/images/county.png"; // Replace with actual base64 or URL
+    const logo = "/images/county.png";
 
     // Logo (far left)
     const logoX = 20; // Far left
@@ -222,11 +680,11 @@ export default function ReportPage({
     const lineEndX = (3 * pageWidth) / 4 - 3;
     const lineY = titleY + 5;
 
-    const gradient = doc.setDrawColor(46, 125, 50); // Start with Green
+    // Dark green to darker yellow gradient
     for (let i = 0; i < lineEndX - lineStartX; i += 2) {
       const ratio = i / (lineEndX - lineStartX);
-      const red = 255 * ratio; // Gradually add red
-      const green = 128 + 127 * (1 - ratio); // Transition from green to yellow
+      const red = 180 * ratio; // Red increases from 0 to 180
+      const green = 100 + 80 * (1 - ratio); // Green decreases from 180 to 100
       doc.setDrawColor(red, green, 0);
       doc.line(lineStartX + i, lineY, lineStartX + i + 2, lineY);
     }
@@ -262,184 +720,180 @@ export default function ReportPage({
     doc.setFont("helvetica", "bold");
     doc.text(`Report Summary: ${station}`, dateX, dateY + 5);
 
-    // Function to generate table for a given shift
-    const addShiftTable = (
-      shiftLabel: string,
-      shift: string,
-      sortedGroupedRecords: {
-        name: string;
-        shift: string;
-        count: number;
-        counter: string;
-        totalValue: number;
-      }[]
-    ) => {
-      doc.text(`${shiftLabel} Summary`, 20, yPos);
-      yPos += 5;
+    // Footer drawing function ------------------------------
 
-      const shiftRecords =
-        sortedGroupedRecords?.filter((record) => record.shift === shift) || [];
-      if (shiftRecords.length === 0) {
-        doc.text("No records found", 20, yPos);
-        yPos += 10;
-        return;
-      }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const drawFooter = (data: any) => {
+      //const pageCount = doc.internal.getNumberOfPages();
+      const currentPage = data.pageNumber;
+
+      // Narrower footer background
+      doc.setFillColor(46, 125, 50);
+      doc.rect(0, 286, pageWidth, 15, "F"); // Reduced height and position
+
+      // Footer text
+      doc.setFontSize(10);
+      doc.setTextColor("white");
+      doc.setFont("helvetica", "bold");
+      doc.text(
+        "Let's make Nairobi work",
+        pageWidth / 2 - doc.getTextWidth("Let's make Nairobi work") / 2,
+        292
+      );
+
+      // Page number
+      const pageNumberText = `Page ${currentPage}`;
+      doc.text(
+        pageNumberText,
+        pageWidth - doc.getTextWidth(pageNumberText) - 10,
+        292
+      );
+
+      // Thinner yellow section
+      doc.setFillColor(255, 255, 0);
+      doc.rect(0, 295, pageWidth, 5, "F");
+    };
+
+    yPos += 10;
+
+    const addTableSection = (
+      title: string,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      data: any[],
+      columns: string[],
+      showCounter: boolean
+    ) => {
+      // Add section title
+      doc.setFontSize(12).setFont("helvetica", "bold").text(title, 20, yPos);
+      yPos += 8;
 
       doc.autoTable({
         startY: yPos,
-        head: [
-          [
-            "No.",
-            rankBy === "service" ? "Service Category" : "Biller",
-            "Number Served",
-            "Total Value",
-          ],
-        ],
-        body: shiftRecords.map((record, index) => [
+        head: [columns],
+        body: data.map((record, index) => [
           index + 1,
           record.name,
           record.count,
+          ...(showCounter ? [record.counter] : []),
           `${record.totalValue.toLocaleString("en-US")}/=`,
         ]),
         foot: [
           [
             "",
             "Total",
-            shiftRecords.reduce((sum, record) => sum + record.count, 0),
-            shiftRecords.reduce((sum, record) => sum + record.count, 0),
-            `${shiftRecords
-              .reduce((sum, record) => sum + record.totalValue, 0)
+            data.reduce((sum, r) => sum + r.count, 0),
+            ...(showCounter ? ["-"] : []),
+            `${data
+              .reduce((sum, r) => sum + r.totalValue, 0)
               .toLocaleString("en-US")}/=`,
           ],
         ],
         headStyles: {
-          fillColor: [46, 125, 50], // Green header
-          textColor: [255, 255, 255], // White text
+          fillColor: [46, 125, 50],
+          textColor: 255,
           fontSize: 10,
           fontStyle: "bold",
         },
-        bodyStyles: {
-          fontSize: 8,
-          textColor: [0, 0, 0], // Black text for rows
-        },
+        bodyStyles: { fontSize: 8 },
         footStyles: {
-          fillColor: [255, 255, 255], // Green footer
-          textColor: [0, 0, 0], // White text
+          fillColor: [46, 125, 50],
+          textColor: 255,
           fontSize: 10,
-          fontStyle: "bold",
         },
         margin: { left: 20, right: 20 },
         theme: "grid",
-        didDrawPage: (data) => {
-          // Add footer to every page
-          const pageCount = doc.internal.getNumberOfPages(); // Total number of pages
-          const currentPage = data.pageNumber; // Current page number
-
-          // Footer background (green rectangle)
-          doc.setFillColor(46, 125, 50); // Green color
-          doc.rect(0, 275, pageWidth, 20, "F"); // Draw a filled rectangle as background for the footer
-
-          // Footer text
-          doc.setFontSize(10);
-          doc.setTextColor("white");
-          doc.setFont("helvetica", "bold");
-          const footerText = "Let's make Nairobi work";
-          const footerX = pageWidth / 2 - doc.getTextWidth(footerText) / 2;
-          doc.text(footerText, footerX, 285);
-
-          // Footer subtext
-          doc.setFont("helvetica", "italic");
-          const footerSubText = "© 2025 All rights reserved.";
-          const footerSubX =
-            pageWidth / 2 - doc.getTextWidth(footerSubText) / 2;
-          doc.text(footerSubText, footerSubX, 290);
-
-          // Page number (far right)
-          doc.setFont("helvetica", "bold");
-          const pageNumberText = `Page ${currentPage} of ${pageCount}`;
-          const pageNumberX = pageWidth - doc.getTextWidth(pageNumberText) - 20; // Far right
-          doc.text(pageNumberText, pageNumberX, 290);
-
-          // Thinner Yellow Section
-          doc.setFillColor(255, 255, 0); // Yellow color
-          doc.rect(0, 295, pageWidth, 10, "F"); // Thinner yellow-filled rectangle
-        },
+        showFoot: "lastPage",
+        didDrawPage: drawFooter,
       });
 
-      yPos = doc.autoTable.previous.finalY + 15; // Update Y position after table
+      yPos = doc.autoTable.previous.finalY + 15;
     };
 
-    // Add Shift 1 Table
-    addShiftTable("Shift 1", "shift 1", sortedGroupedRecords.byUser);
-
-    // Add Shift 2 Table
-    addShiftTable("Shift 2", "shift 2", sortedGroupedRecords.byUser);
-
-    // Add Service Summary table when rankBy === "overall"
-    if (rankBy === "overall") {
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.text("Service Summary", 20, yPos);
-      yPos += 10;
-
-      doc.autoTable({
-        startY: yPos,
-        head: [["Service", "Number Served", "Total Value"]],
-        body: sortedGroupedRecords.byService.map((record) => [
-          record.name,
-          record.count,
-          `${record.totalValue.toLocaleString("en-US")}/=`,
-        ]),
-        headStyles: {
-          fillColor: [46, 125, 50], // Green header
-          textColor: [255, 255, 255], // White text
-          fontSize: 10,
-          fontStyle: "bold",
-        },
-        bodyStyles: {
-          fontSize: 8,
-          textColor: [0, 0, 0], // Black text for rows
-        },
-        margin: { left: 20, right: 20 },
-        theme: "grid",
-        didDrawPage: (data) => {
-          // Add footer to every page
-          const pageCount = doc.internal.getNumberOfPages(); // Total number of pages
-          const currentPage = data.pageNumber; // Current page number
-
-          // Footer background (green rectangle)
-          doc.setFillColor(46, 125, 50); // Green color
-          doc.rect(0, 275, pageWidth, 20, "F"); // Draw a filled rectangle as background for the footer
-
-          // Footer text
-          doc.setFontSize(10);
-          doc.setTextColor("white");
-          doc.setFont("helvetica", "bold");
-          const footerText = "Let's make Nairobi work";
-          const footerX = pageWidth / 2 - doc.getTextWidth(footerText) / 2;
-          doc.text(footerText, footerX, 285);
-
-          // Footer subtext
-          doc.setFont("helvetica", "italic");
-          const footerSubText = "© 2025 All rights reserved.";
-          const footerSubX =
-            pageWidth / 2 - doc.getTextWidth(footerSubText) / 2;
-          doc.text(footerSubText, footerSubX, 290);
-
-          // Page number (far right)
-          doc.setFont("helvetica", "bold");
-          const pageNumberText = `Page ${currentPage} of ${pageCount}`;
-          const pageNumberX = pageWidth - doc.getTextWidth(pageNumberText) - 20; // Far right
-          doc.text(pageNumberText, pageNumberX, 290);
-
-          // Thinner Yellow Section
-          doc.setFillColor(255, 255, 0); // Yellow color
-          doc.rect(0, 295, pageWidth, 10, "F"); // Thinner yellow-filled rectangle
-        },
-      });
-
-      yPos = doc.autoTable.previous.finalY + 15; // Update Y position after table
+    // Main content tables
+    if (rankBy === "service") {
+      addTableSection(
+        "Shift 1 - Service Summary",
+        sortedGroupedRecords.byService.filter(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (r: any) => r.shift.toLowerCase() === "shift 1"
+        ),
+        ["No.", "Service Category", "Number Served", "Total Value"],
+        false
+      );
+      addTableSection(
+        "Shift 2 - Service Summary",
+        sortedGroupedRecords.byService.filter(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (r: any) => r.shift.toLowerCase() === "shift 2"
+        ),
+        ["No.", "Service Category", "Number Served", "Total Value"],
+        false
+      );
+    } else if (rankBy === "biller-ranked") {
+      addTableSection(
+        "Biller Performance Summary",
+        sortedGroupedRecords.byUser,
+        ["No.", "Biller", "Number Served", "Counter", "Total Value"],
+        true
+      );
+    } else {
+      addTableSection(
+        "Shift 1 Summary",
+        sortedGroupedRecords.byUser.filter(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (r: any) => r.shift.toLowerCase() === "shift 1"
+        ),
+        ["No.", "Biller", "Number Served", "Counter", "Total Value"],
+        true
+      );
+      addTableSection(
+        "Shift 2 Summary",
+        sortedGroupedRecords.byUser.filter(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (r: any) => r.shift.toLowerCase() === "shift 2"
+        ),
+        ["No.", "Biller", "Number Served", "Counter", "Total Value"],
+        true
+      );
     }
+
+    // Service Summary Table
+    if (rankBy === "overall") {
+      addTableSection(
+        "Service Summary",
+        sortedGroupedRecords.byService,
+        ["No.", "Service", "Number Served", "Total value"],
+        false
+      );
+    }
+    // Add final summary section
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("Overall Summary", 20, yPos);
+    yPos += 10;
+
+    const summaryData = [
+      ["Total Customers Served:", overallTotals?.totalServed],
+      [
+        "Total Value:",
+        `${overallTotals?.totalValue.toLocaleString("en-US")}/=`,
+      ],
+      ["Total Invoices/Receipts:", overallTotals?.totalServed],
+    ];
+
+    doc.autoTable({
+      startY: yPos,
+      head: [["Metric", "Value"]],
+      body: summaryData,
+      headStyles: {
+        fillColor: [46, 125, 50],
+        textColor: [255, 255, 255],
+        fontSize: 12,
+        fontStyle: "bold",
+      },
+      bodyStyles: { fontSize: 11 },
+      theme: "grid",
+    });
 
     // Format date for filename (YYYY-MM-DD)
     const formattedDate = new Date().toISOString().split("T")[0];
@@ -814,7 +1268,7 @@ export default function ReportPage({
                 <td className="border px-4 py-2 font-bold">
                   {sortedGroupedRecords.byUser
                     ?.filter(
-                      (record) => record.shift.toLowerCase() === "shift 1"
+                      (record) => record.shift.toLowerCase() === "shift 2"
                     )
                     .reduce((sum, record) => sum + record.count, 0)}
                 </td>
@@ -824,7 +1278,7 @@ export default function ReportPage({
                 <td className="border px-4 py-2 font-bold">
                   {sortedGroupedRecords.byUser
                     ?.filter(
-                      (record) => record.shift.toLowerCase() === "shift 1"
+                      (record) => record.shift.toLowerCase() === "shift 2"
                     )
                     .reduce((sum, record) => sum + record.totalValue, 0)
                     .toLocaleString("en-US")}

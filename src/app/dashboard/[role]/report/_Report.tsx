@@ -27,6 +27,7 @@ export default function ReportPage({
     startDate: new Date(),
     endDate: null,
   });
+
   const [recordType, setRecordType] = useState<string>("invoice");
   const [rankBy, setRankBy] = useState<string>("overall");
   const [sortOrder, setSortOrder] = useState<string>("totalValue");
@@ -108,7 +109,7 @@ export default function ReportPage({
     if (!useRecords) return { byService: {}, byUser: {} };
 
     const byService = useRecords.reduce((acc, record) => {
-      const key = `${record.service}-${record.shift}-${record.counter}`;
+      const key = `${record.service}`;
       if (!acc[key]) {
         acc[key] = {
           count: 0,
@@ -151,10 +152,10 @@ export default function ReportPage({
           return b[1].count - a[1].count;
         })
         .map(([key, data]) => {
-          const [name, shift] = key.split("-");
+          const [name] = key.split("-");
           return {
             name,
-            shift,
+            shift: data.shift,
             count: data.count,
             counter: data.counter,
             totalValue: data.totalValue,

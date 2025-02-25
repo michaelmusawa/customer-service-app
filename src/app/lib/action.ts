@@ -27,7 +27,7 @@ cron.schedule("0 * * * *", async () => {
   try {
     const pool = await poolPromise; // Await the pool connection
 
-      // Deleting expired Session records
+    // Deleting expired Session records
     await pool.request().query(`
       DELETE FROM [Session] WHERE [expires] <= GETDATE()
     `);
@@ -108,7 +108,7 @@ export async function fetchUsers(user: string): Promise<User[]> {
     const users = result.recordset; // The result is stored in `recordset`
     if (users.length > 0) {
       return users;
-    }else {
+    } else {
       return [];
     }
   } catch (error) {
@@ -149,17 +149,14 @@ const CreateUserFormSchema = z.object({
   password: z.string(),
   role: z.string(),
   station: z.string(),
-  shift: z.string().nullable().optional(),  
-  counter: z.string().nullable().optional(), 
+  shift: z.string().nullable().optional(),
+  counter: z.string().nullable().optional(),
 });
 
 export async function createUser(
   prevState: CreateUserState,
   formData: FormData
-  
 ): Promise<CreateUserState> {
- 
-  
   const validatedFields = CreateUserFormSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
@@ -171,7 +168,7 @@ export async function createUser(
   });
 
   if (!validatedFields.success) {
-    console.log(validatedFields.error.flatten().fieldErrors)
+    console.log(validatedFields.error.flatten().fieldErrors);
     return {
       ...prevState,
       errors: validatedFields.error.flatten().fieldErrors,
@@ -179,22 +176,21 @@ export async function createUser(
     };
   }
 
-  
-
-  const { name, email, password, role, station, shift, counter } = validatedFields.data;
+  const { name, email, password, role, station, shift, counter } =
+    validatedFields.data;
   const hashedPass = bcrypt.hashSync(password || email, bcrypt.genSaltSync(10));
   const id = crypto.randomUUID();
   const session = await auth();
   const userRole =
     email === "supersupervisor@gmail.com" ? "supersupervisor" : role;
 
-    const checkEmail = await getUser(email);
+  const checkEmail = await getUser(email);
 
-    if (checkEmail) {
-      return {
-        state_error: `Email already exist! Failed to create user.`,
-      };
-    }
+  if (checkEmail) {
+    return {
+      state_error: `Email already exist! Failed to create user.`,
+    };
+  }
 
   try {
     const pool = await poolPromise; // Await the pool connection
@@ -348,8 +344,8 @@ export async function editUser(
   }
 
   if (session?.user.role === role) {
-    if (resetPass === "true") {   
-      await signOut();  
+    if (resetPass === "true") {
+      await signOut();
     }
 
     revalidatePath(`/dashboard/${session?.user.role}/profile`);
@@ -507,8 +503,6 @@ export async function getUser(email: string): Promise<User | undefined> {
   }
 }
 
-
-
 export async function getUserById(id: string): Promise<User | undefined> {
   try {
     const pool = await poolPromise;
@@ -524,8 +518,6 @@ export async function getUserById(id: string): Promise<User | undefined> {
     throw new Error("Failed to fetch user.");
   }
 }
-
-
 
 const CreateRecordSchema = z.object({
   name: z.string(),
@@ -841,7 +833,6 @@ export async function editRequestEditRecord(
   prevState: RequestEditRecordState,
   formData: FormData
 ) {
-
   const validatedFields = RequestEditRecordSchema.safeParse({
     supervisorId: formData.get("supervisorId"),
     supervisorComment: formData.get("supervisorComment"),
@@ -889,8 +880,6 @@ export async function editRequestEditRecord(
   revalidatePath(`/dashboard/${session?.user.role}/notification`);
   redirect(`/dashboard/${session?.user.role}/notification?edit=true`);
 }
-
-
 
 export async function fetchRecordsByAttendant(userId: string) {
   try {
@@ -958,11 +947,11 @@ export async function fetchRecords() {
           r.subService,
           r.recordNumber,
           r.value,
-          r.counter,
-          r.shift,
           r.userId AS recordUserId,
           r.createdAt AS recordCreatedAt,
           r.updatedAt AS recordUpdatedAt,
+          u.counter,
+          u.shift,
           u.id AS userId,
           u.name AS userName,
           u.email AS userEmail,
@@ -981,7 +970,6 @@ export async function fetchRecords() {
 
     if (records.length > 0) {
       return records;
-      
     } else {
       return [];
     }
@@ -1006,14 +994,14 @@ export async function fetchRequestEditRecords() {
           r.subService,
           r.recordNumber,
           r.value,
-          r.counter,
-          r.shift,
           r.attendantId,
           r.status,
           r.attendantComment,
           r.createdAt AS editedRecordCreatedAt,
           r.updatedAt AS editedRecordUpdatedAt,
           u.id AS userId,
+          u.counter,
+          u.shift,
           u.name AS userName,
           u.email AS userEmail,
           u.station AS userStation,
@@ -1091,8 +1079,6 @@ export async function fetchRequestEditRecordsByUser(id: string) {
   }
 }
 
-
-
 export async function getRecord(id: string) {
   try {
     const pool = await poolPromise;
@@ -1159,8 +1145,8 @@ export async function fetchGroupedRecordsByDateRange(
           e.service, 
           e.subService, 
           e.value, 
-          e.counter, 
-          e.shift, 
+          u.counter, 
+          u.shift, 
           e.recordType,
           e.name,
           e.createdAt,
@@ -1175,8 +1161,8 @@ export async function fetchGroupedRecordsByDateRange(
           COALESCE(e.service, r.service) AS service,
           COALESCE(e.subService, r.subService) AS subService,
           COALESCE(e.value, r.value) AS value,
-          COALESCE(e.counter, r.counter) AS counter,
-          COALESCE(e.shift, r.shift) AS shift,
+          COALESCE(u.counter, u.counter) AS counter,
+          COALESCE(u.shift, u.shift) AS shift,
           COALESCE(e.recordType, r.recordType) AS recordType,
           COALESCE(e.name, r.name) AS name,
           COALESCE(e.createdAt, r.createdAt) AS createdAt,
@@ -1244,24 +1230,32 @@ ORDER BY
 }
 
 // Fetch daily records grouped by day of the week
-export async function fetchDailyGroupedRecords(): Promise<LocalRecords[] | undefined> {
+export async function fetchDailyGroupedRecords(): Promise<
+  LocalRecords[] | undefined
+> {
   const now = new Date();
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Start of today
   const endOfDay = new Date(startOfDay);
   endOfDay.setHours(23, 59, 59, 999); // End of today
 
-  const formatDateTime = (date: Date): string => date.toISOString().replace("T", " ").substring(0, 23);
+  const formatDateTime = (date: Date): string =>
+    date.toISOString().replace("T", " ").substring(0, 23);
 
-  const records = await fetchGroupedRecordsByDateRange(formatDateTime(startOfDay), formatDateTime(endOfDay));
+  const records = await fetchGroupedRecordsByDateRange(
+    formatDateTime(startOfDay),
+    formatDateTime(endOfDay)
+  );
   return records;
 }
 
-
 // Utility function to format date-time as "YYYY-MM-DD HH:MM:SS.sss"
-const formatDateTime = (date: Date): string => date.toISOString().replace("T", " ").substring(0, 23);
+const formatDateTime = (date: Date): string =>
+  date.toISOString().replace("T", " ").substring(0, 23);
 
 // Fetch weekly records grouped by week
-export async function fetchWeeklyGroupedRecords(): Promise<LocalRecords[] | undefined> {
+export async function fetchWeeklyGroupedRecords(): Promise<
+  LocalRecords[] | undefined
+> {
   const now = new Date();
   const dayOfWeek = now.getDay();
   const startOfWeek = new Date(now);
@@ -1272,22 +1266,32 @@ export async function fetchWeeklyGroupedRecords(): Promise<LocalRecords[] | unde
   endOfWeek.setDate(startOfWeek.getDate() + 6); // End of the week (Sunday)
   endOfWeek.setHours(23, 59, 59, 999); // Reset to end of the day
 
-  return fetchGroupedRecordsByDateRange(formatDateTime(startOfWeek), formatDateTime(endOfWeek));
+  return fetchGroupedRecordsByDateRange(
+    formatDateTime(startOfWeek),
+    formatDateTime(endOfWeek)
+  );
 }
 
 // Fetch monthly records grouped by month
-export async function fetchMonthlyGroupedRecords(): Promise<LocalRecords[] | undefined> {
+export async function fetchMonthlyGroupedRecords(): Promise<
+  LocalRecords[] | undefined
+> {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1); // Start of the month
   startOfMonth.setHours(0, 0, 0, 0); // Reset to start of the day
 
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0); // Last day of the month
   endOfMonth.setHours(23, 59, 59, 999); // Reset to end of the day
-  return fetchGroupedRecordsByDateRange(formatDateTime(startOfMonth), formatDateTime(endOfMonth));
+  return fetchGroupedRecordsByDateRange(
+    formatDateTime(startOfMonth),
+    formatDateTime(endOfMonth)
+  );
 }
 
 // Fetch yearly records grouped by year
-export async function fetchYearlyGroupedRecords(): Promise<LocalRecords[] | undefined> {
+export async function fetchYearlyGroupedRecords(): Promise<
+  LocalRecords[] | undefined
+> {
   const now = new Date();
   const startOfYear = new Date(now.getFullYear(), 0, 1); // January 1st
   startOfYear.setHours(0, 0, 0, 0); // Reset to start of the day
@@ -1295,5 +1299,8 @@ export async function fetchYearlyGroupedRecords(): Promise<LocalRecords[] | unde
   const endOfYear = new Date(now.getFullYear(), 11, 31); // December 31st
   endOfYear.setHours(23, 59, 59, 999); // Reset to end of the day
 
-  return fetchGroupedRecordsByDateRange(formatDateTime(startOfYear), formatDateTime(endOfYear));
+  return fetchGroupedRecordsByDateRange(
+    formatDateTime(startOfYear),
+    formatDateTime(endOfYear)
+  );
 }

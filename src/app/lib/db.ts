@@ -22,13 +22,13 @@ import sql from "mssql";
 // });
 
 const poolPromise = sql.connect({
-  user: "Customer_Service_sys", // Your SQL Server username
-  password: "Ncc@CS2025", // Your SQL Server password
-  server: "172.16.10.3", // SQL Server hostname or IP address
-  database: "customerservice", // Your database name
+  user: "Customer_Service_sys",
+  password: "Ncc@CS2025",
+  server: "172.16.10.3",
+  database: "customerservicetest",
   options: {
-    encrypt: false, // Use encryption if needed (for Azure or secure connections)
-    trustServerCertificate: true, // Use this for local connections if you have issues with SSL
+    encrypt: false,
+    trustServerCertificate: true,
   },
 });
 

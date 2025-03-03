@@ -2,7 +2,7 @@ import { getEditedRecord, getRecord } from "@/app/lib/action";
 import RecordForm from "@/components/forms/recordForm";
 import { auth } from "../../../../../../../auth";
 import { redirect } from "next/navigation";
-import Link from "next/link";
+import UnauthorizedMessage from "@/components/unathorizedAccess";
 
 export default async function EditRecordPage({
   params,
@@ -15,14 +15,7 @@ export default async function EditRecordPage({
   if (!session) {
     return redirect("/login");
   } else if (session?.user.role !== role) {
-    return (
-      <div>
-        <h1>You are not authorized to visit this page!</h1>
-        <Link className="button" href="/login">
-          Go to Login
-        </Link>
-      </div>
-    );
+    return <UnauthorizedMessage role={role} />;
   }
   const id = params.id;
 

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "../../../../../auth";
-import Link from "next/link";
+import UnauthorizedMessage from "@/components/unathorizedAccess";
 
 export default async function Layout({
   children,
@@ -14,14 +14,7 @@ export default async function Layout({
   if (!session) {
     return redirect("/login");
   } else if (session?.user.role !== role) {
-    return (
-      <div>
-        <h1>You are not authorized to visit this page!</h1>
-        <Link className="button" href="/login">
-          Go to Login
-        </Link>
-      </div>
-    );
+    return <UnauthorizedMessage role={role} />;
   }
 
   return (

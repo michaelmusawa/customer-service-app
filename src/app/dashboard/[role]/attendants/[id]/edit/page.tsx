@@ -2,7 +2,7 @@ import { getUserById } from "@/app/lib/action";
 import EditUserPage from "../../../_components/editUser";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "../../../../../../../auth";
-import Link from "next/link";
+import UnauthorizedMessage from "@/components/unathorizedAccess";
 
 export default async function Page({
   params,
@@ -15,14 +15,7 @@ export default async function Page({
   if (!session) {
     return redirect("/login");
   } else if (session?.user.role !== role) {
-    return (
-      <div>
-        <h1>You are not authorized to visit this page!</h1>
-        <Link className="button" href="/login">
-          Go to Login
-        </Link>
-      </div>
-    );
+    return <UnauthorizedMessage role={role} />;
   }
   const loggedInUser = session.user.role;
   const id = params.id;

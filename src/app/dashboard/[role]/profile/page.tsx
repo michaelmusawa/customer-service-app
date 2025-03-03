@@ -2,7 +2,7 @@ import { getUser } from "@/app/lib/action";
 import { auth } from "../../../../../auth";
 import { redirect } from "next/navigation";
 import ProfileCard from "@/components/ProfileCard";
-import Link from "next/link";
+import UnauthorizedMessage from "@/components/unathorizedAccess";
 
 type Params = { role: string };
 type SearchParams = { [key: string]: string | string[] | undefined };
@@ -21,14 +21,7 @@ export default async function page({
   if (!session) {
     return redirect("/login");
   } else if (session?.user.role !== role) {
-    return (
-      <div>
-        <h1>You are not authorized to visit this page!</h1>
-        <Link className="button" href="/login">
-          Go to Login
-        </Link>
-      </div>
-    );
+    return <UnauthorizedMessage role={role} />;
   }
 
   const user = await getUser(session.user.email || "");

@@ -1,13 +1,14 @@
 import { redirect } from "next/navigation";
 import { auth } from "../../../../../auth";
 import NotificationPage from "../_components/NotificationPage";
-import Link from "next/link";
+
 import {
   fetchRecords,
   fetchRequestEditRecords,
   fetchRequestEditRecordsByUser,
   fetchUsers,
 } from "@/app/lib/action";
+import UnauthorizedMessage from "@/components/unathorizedAccess";
 
 export default async function Page({ params }: { params: { role: string } }) {
   const session = await auth();
@@ -16,14 +17,7 @@ export default async function Page({ params }: { params: { role: string } }) {
   if (!session) {
     return redirect("/login");
   } else if (session?.user.role !== role) {
-    return (
-      <div>
-        <h1>You are not authorized to visit this page!</h1>
-        <Link className="button" href="/login">
-          Go to Login
-        </Link>
-      </div>
-    );
+    return <UnauthorizedMessage role={role} />;
   }
 
   let editRequests;

@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { auth } from "../../../../../../auth";
 import CreateUserPage from "../../_components/createUser";
-import Link from "next/link";
 import UsersTable from "../../_components/usersTable";
 import { fetchOnlineUsers, fetchUsers, getUserById } from "@/app/lib/action";
+import UnauthorizedMessage from "@/components/unathorizedAccess";
 
 type Params = { role: string };
 type SearchParams = { [key: string]: string | string[] | undefined };
@@ -23,14 +23,7 @@ export default async function Page({
   if (!session) {
     return redirect("/login");
   } else if (session?.user.role !== role) {
-    return (
-      <div>
-        <h1>You are not authorized to visit this page!</h1>
-        <Link className="button" href="/login">
-          Go to Login
-        </Link>
-      </div>
-    );
+    return <UnauthorizedMessage role={role} />;
   }
 
   let type: string = "";

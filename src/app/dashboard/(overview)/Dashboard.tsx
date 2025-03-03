@@ -23,7 +23,6 @@ export default function Dashboard({
 }) {
   const [analysisType, setAnalysisType] = useState<string>("yearly");
 
-
   const [useRecords, setUseRecords] = useState(() => {
     if (analysisType === "monthly") return monthlyRecords;
     if (analysisType === "yearly") return yearlyRecords;
@@ -39,11 +38,16 @@ export default function Dashboard({
       setUseRecords(weeklyRecords || []);
     } else if (analysisType === "daily") {
       setUseRecords(dailyRecords || []);
-    
-  } else if (analysisType === "yearly") {
-    setUseRecords(yearlyRecords || []);
-  }
-  }, [analysisType, dailyRecords, monthlyRecords, weeklyRecords, yearlyRecords]);
+    } else if (analysisType === "yearly") {
+      setUseRecords(yearlyRecords || []);
+    }
+  }, [
+    analysisType,
+    dailyRecords,
+    monthlyRecords,
+    weeklyRecords,
+    yearlyRecords,
+  ]);
 
   const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setAnalysisType(event.target.value);
@@ -52,7 +56,6 @@ export default function Dashboard({
     return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
   }
 
- 
   return (
     <main>
       <div
@@ -61,6 +64,8 @@ export default function Dashboard({
         <div className="flex justify-between items-center">
           {user === "attendant" ? (
             <h1 className="text-2xl font-bold">Biller Dashboard</h1>
+          ) : user === "supersupervisor" ? (
+            <h1 className="text-2xl font-bold">Super supervisor Dashboard</h1>
           ) : (
             <h1 className="text-2xl font-bold">
               {Capitalize(`${user} Dashboard`)}

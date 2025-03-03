@@ -9,7 +9,7 @@ import {
   getUserById,
 } from "@/app/lib/action";
 import { redirect } from "next/navigation";
-import Link from "next/link";
+import UnauthorizedMessage from "@/components/unathorizedAccess";
 
 type Params = { role: string };
 type SearchParams = { [key: string]: string | string[] | undefined };
@@ -28,14 +28,7 @@ export default async function RecordsPage({
   if (!session) {
     return redirect("/login");
   } else if (session?.user.role !== role) {
-    return (
-      <div>
-        <h1>You are not authorized to visit this page!</h1>
-        <Link className="button" href="/login">
-          Go to Login
-        </Link>
-      </div>
-    );
+    return <UnauthorizedMessage role={role} />;
   }
   const userId = session?.user.id;
 
@@ -54,8 +47,7 @@ export default async function RecordsPage({
   }
 
   const getUser = await getUserById(session.user.id);
-    const station = getUser?.station;
-
+  const station = getUser?.station;
 
   return (
     <RecordsTable
@@ -63,7 +55,7 @@ export default async function RecordsPage({
       editedRecords={editedRecords}
       role={session?.user.role}
       edit={edit}
-      station = {station}
+      station={station}
     />
   );
 }

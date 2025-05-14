@@ -27,7 +27,25 @@ function LoginButton() {
       className="flex gap-2 mt-2"
     >
       {pending ? "Logging in..." : "Login"}
-      <ArrowRightIcon className="w-4" />
+      {pending ? (
+        <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24">
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          ></circle>
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+          ></path>
+        </svg>
+      ) : (
+        <ArrowRightIcon className="w-4" />
+      )}
     </button>
   );
 }
@@ -38,7 +56,7 @@ export default function LoginForm() {
 
   const togglePassword = () => {
     setShowPassword(!showPassword);
-  }
+  };
 
   return (
     <form action={dispatch} className="space-y-3 shadow-md shadow-black/20">
@@ -85,11 +103,13 @@ export default function LoginForm() {
                 required
                 minLength={6}
               />
-              <span className="absolute right-2 top-0.5 pt-2 cursor-pointer" onClick={togglePassword}>
-              {showPassword ? "👁️" : "🙈"}
+              <span
+                className="absolute right-2 top-0.5 pt-2 cursor-pointer"
+                onClick={togglePassword}
+              >
+                {showPassword ? "👁️" : "🙈"}
               </span>
               <KeyIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
-              
             </div>
           </div>
         </div>

@@ -15,8 +15,7 @@ import {
   User,
 } from "./definitions";
 import { z } from "zod";
-import poolPromise from "./db";
-import sql from "mssql";
+import pool from "./db";
 import bcrypt from "bcrypt";
 import { revalidatePath } from "next/cache";
 import fs from "fs/promises";
@@ -25,12 +24,12 @@ import { LocalRecords } from "../dashboard/(overview)/page";
 
 cron.schedule("0 * * * *", async () => {
   try {
-    const pool = await poolPromise; // Await the pool connection
-
-    // Deleting expired Session records
-    await pool.request().query(`
-      DELETE FROM [Session] WHERE [expires] <= GETDATE()
+    // Deleting expired Session records in Postgres
+    await pool.query(`
+      DELETE FROM "Session"
+      WHERE expires <= NOW()
     `);
+    console.log("Expired sessions deleted successfully");
   } catch (err) {
     console.error("Error deleting expired records:", err);
   }
@@ -75,16 +74,10 @@ export async function signUserOut() {
 
   if (userId) {
     try {
-      const pool = await poolPromise; // Await the pool connection
-
       // Delete session from the database
-      await pool.request().input("userId", sql.VarChar, userId) // Use parameterized query to prevent SQL injection
-        .query(`
-          DELETE FROM [Session]
-          WHERE [userId] = @userId
-        `);
+      await pool.query(`DELETE FROM "Session" WHERE "userId" = $1`, [userId]);
 
-      // Sign the user out
+      // Sign the user out in your auth system
       await signOut();
     } catch (e) {
       console.error("Something went wrong deleting record!", e);
@@ -95,48 +88,37 @@ export async function signUserOut() {
   redirect("/login");
 }
 
-export async function fetchUsers(user: string): Promise<User[]> {
+export async function fetchUsers(role: string): Promise<User[]> {
   try {
-    const pool = await poolPromise; // Ensure the pool is connected
-    const result = await pool.request().input("role", sql.VarChar, user) // Sanitize the user input and avoid SQL injection
-      .query(`
-        SELECT * FROM [User]
-        WHERE role = @role
-        ORDER BY [name] ASC
-      `);
+    // Run a parameterized DELETE against Postgres
+    const result = await pool.query(
+      `SELECT * 
+         FROM "User"
+        WHERE "role" = $1
+        ORDER BY "name" ASC`,
+      [role]
+    );
 
-    const users = result.recordset; // The result is stored in `recordset`
-    if (users.length > 0) {
-      return users;
-    } else {
-      return [];
-    }
+    // In pg, rows lives on `result.rows`
+    return result.rows;
   } catch (error) {
-    console.error("Something went wrong fetching supervisors", error);
+    console.error("Something went wrong fetching users:", error);
     return [];
   }
 }
 
-export async function fetchOnlineUsers(): Promise<OnlineUser[] | undefined> {
+export async function fetchOnlineUsers(): Promise<OnlineUser[]> {
   try {
-    // Await the pool connection
-    const pool = await poolPromise;
-
-    // Execute query to fetch online users from the "Session" table
-    const result = await pool.request().query(`
-      SELECT * FROM [Session]
+    // Query all sessions from Postgres
+    const result = await pool.query(`
+      SELECT * 
+        FROM "Session"
     `);
 
-    // Access users from the result's recordset
-    const users = result.recordset;
-
-    if (users.length > 0) {
-      return users; // Return the list of online users
-    } else {
-      return []; // Return an empty array if no users found
-    }
+    // Return the rows (even if empty)
+    return result.rows;
   } catch (error) {
-    console.error("Something went wrong fetching online users", error);
+    console.error("Something went wrong fetching online users:", error);
     throw new Error("Failed to fetch online users.");
   }
 }
@@ -193,37 +175,32 @@ export async function createUser(
   }
 
   try {
-    const pool = await poolPromise; // Await the pool connection
+    // Insert user data into Postgres using parameterized placeholders
+    await pool.query(
+      `
+      INSERT INTO "User"
+        ("id", "name", "email", "password", "station", "shift", "counter", "role")
+      VALUES
+        ($1,    $2,     $3,      $4,         $5,        $6,      $7,        $8)
+      `,
+      [id, name, email, hashedPass, station, shift, counter, userRole]
+    );
 
-    // Insert user data into the database using parameterized queries
-    await pool
-      .request()
-      .input("id", sql.VarChar, id) // Input parameters
-      .input("name", sql.VarChar, name)
-      .input("email", sql.VarChar, email)
-      .input("password", sql.VarChar, hashedPass)
-      .input("station", sql.VarChar, station)
-      .input("shift", sql.VarChar, shift)
-      .input("counter", sql.VarChar, counter)
-      .input("role", sql.VarChar, userRole).query(`
-        INSERT INTO [User] (id, name, email, password, station, shift, counter, role)
-        VALUES (@id, @name, @email, @password, @station, @shift, @counter, @role)
-      `);
+    // Invalidate or revalidate the Next.js path for your dashboard
     revalidatePath(`/dashboard/${session?.user.role}/${role}s/create`);
+
     return {
       ...prevState,
       state_error: null,
       message: `Added user successfully.`,
     };
   } catch (error) {
-    console.error(error);
+    console.error("Failed to create user:", error);
     return {
       ...prevState,
       state_error: `Something went wrong! Failed to create ${role}.`,
     };
   }
-
-  // Revalidate the path after successful insertion
 }
 
 const FormSchema = z.object({
@@ -274,15 +251,16 @@ export async function editUser(
   }
 
   try {
-    const pool = await poolPromise;
-    const result = await pool.request().input("id", sql.VarChar, id) // Bind the 'id' parameter
-      .query(`
-      SELECT * FROM [User] WHERE id = @id
-    `);
+    const result = await pool.query(
+      `SELECT * 
+         FROM "User"
+        WHERE "id" = $1`,
+      [id]
+    );
 
     // Logic for password
 
-    const existingUser = result.recordset[0];
+    const existingUser = result.rows[0];
 
     if (existingUser.id === session?.user.id) {
       hashedPass = password ? generateHash(password) : existingUser.password;
@@ -313,25 +291,19 @@ export async function editUser(
       imagePath = existingUser.image;
     }
 
-    await pool
-      .request()
-      .input("name", sql.VarChar, name)
-      .input("email", sql.VarChar, email)
-      .input("password", sql.VarChar, hashedPass)
-      .input("role", sql.VarChar, role)
-      .input("station", sql.VarChar, station)
-      .input("image", sql.VarChar, imagePath)
-      .input("id", sql.VarChar, id).query(`
-      UPDATE [User]
-      SET
-        name = @name,
-        email = @email,
-        password = @password,
-        role = @role,
-        station = @station,
-        image = @image
-      WHERE id = @id
-    `);
+    await pool.query(
+      `
+      UPDATE "User"
+         SET "name"     = $1,
+             "email"    = $2,
+             "password" = $3,
+             "role"     = $4,
+             "station"  = $5,
+             "image"    = $6
+       WHERE "id"       = $7
+      `,
+      [name, email, hashedPass, role, station, imagePath, id]
+    );
 
     revalidatePath(`/dashboard/${session?.user.role}/${role}s/create`);
   } catch (error) {
@@ -393,24 +365,19 @@ export async function archiveUser(
   }
 
   try {
-    const pool = await poolPromise;
-    await pool
-      .request()
-      .input("id", sql.VarChar, id)
-      .input("status", sql.VarChar, userStatus)
-      .query(
-        `
-      UPDATE [User]
-      SET
-        status = @status
-        WHERE id = @id
-        `
-      );
+    await pool.query(
+      `
+      UPDATE "User"
+         SET "status" = $1
+       WHERE "id"     = $2
+      `,
+      [userStatus, id]
+    );
   } catch (error) {
-    console.error("Something went wrong", error);
+    console.error("Something went wrong updating user status:", error);
     return {
       ...prevState,
-      state_error: "Error in the processing your request",
+      state_error: "Error processing your request",
       response: "!ok",
     };
   }
@@ -448,30 +415,28 @@ export async function assignShiftAndCounter(
   const session = await auth();
 
   try {
-    const pool = await poolPromise;
-    await pool
-      .request()
-      .input("id", sql.VarChar, id)
-      .input("counter", sql.VarChar, counter)
-      .input("shift", sql.VarChar, shift)
-      .query(
-        `
-      UPDATE [User]
-      SET
-        counter = @counter,
-        shift = @shift
-        WHERE id = @id
-        `
-      );
+    // Update counter and shift in Postgres
+    await pool.query(
+      `
+      UPDATE "User"
+         SET "counter" = $1,
+             "shift"   = $2
+       WHERE "id"      = $3
+      `,
+      [counter, shift, id]
+    );
 
+    // Revalidate the Next.js path
     revalidatePath(`/dashboard/${session?.user.role}/${role}s/create`);
+
     return {
       ...prevState,
       message: "Shift updated successfully",
       response: "ok",
+      state_error: null,
     };
   } catch (error) {
-    console.error("Something went wrong updating user shift", error);
+    console.error("Something went wrong updating user shift:", error);
     return {
       ...prevState,
       state_error: "Error updating user shift",
@@ -482,39 +447,39 @@ export async function assignShiftAndCounter(
 
 export async function getUser(email: string): Promise<User | undefined> {
   try {
-    // Await the pool connection
-    const pool = await poolPromise;
+    // Execute a parameterized SELECT against Postgres
+    const result = await pool.query(
+      `
+      SELECT *
+        FROM "User"
+       WHERE "email" = $1
+    ORDER BY "createdAt" DESC
+      `,
+      [email]
+    );
 
-    // Execute the query to fetch the user by email
-    const result = await pool.request().input("email", sql.VarChar, email) // Use parameterized query to prevent SQL injection
-      .query(`
-        SELECT * FROM [User]
-        WHERE email = @email
-        ORDER BY [createdAt] DESC
-      `);
-
-    // Access the first user from the result's recordset
-    const user = result.recordset[0];
-
-    return user; // Return the user or undefined if not found
+    // Return the first row (or undefined if none)
+    return result.rows[0];
   } catch (error) {
-    console.error("Failed to fetch user:", error);
+    console.error("Failed to fetch user by email:", error);
     throw new Error("Failed to fetch user.");
   }
 }
 
 export async function getUserById(id: string): Promise<User | undefined> {
   try {
-    const pool = await poolPromise;
-    const result = await pool.request().input("id", sql.VarChar, id).query(`
-        SELECT * FROM [User] 
-        WHERE id = @id
-      `);
-    const user = result.recordset[0];
+    const result = await pool.query(
+      `
+      SELECT *
+        FROM "User"
+       WHERE "id" = $1
+      `,
+      [id]
+    );
 
-    return user;
+    return result.rows[0]; // first row or undefined if none
   } catch (error) {
-    console.error("Failed to fetch user:", error);
+    console.error("Failed to fetch user by id:", error);
     throw new Error("Failed to fetch user.");
   }
 }
@@ -571,39 +536,42 @@ export async function createRecord(prevState: RecordState, formData: FormData) {
   const session = await auth();
 
   try {
-    const pool = await poolPromise; // Await the pool connection
+    // Insert the new record using positional parameters
+    await pool.query(
+      `
+      INSERT INTO "Record"
+        ("id", "name", "ticket", "value", "shift", "service",
+         "recordNumber", "counter", "userId", "subService", "recordType")
+      VALUES
+        ($1,    $2,     $3,        $4,     $5,      $6,
+         $7,           $8,        $9,      $10,         $11)
+      `,
+      [
+        id,
+        name,
+        ticketNumber,
+        value,
+        shift,
+        service,
+        recordNumber,
+        counter,
+        userId,
+        subService,
+        recordType,
+      ]
+    );
 
-    // Use parameterized query to insert the record
-    await pool
-      .request()
-      .input("id", sql.NVarChar, id)
-      .input("name", sql.NVarChar, name)
-      .input("ticketNumber", sql.NVarChar, ticketNumber)
-      .input("value", sql.Float, value)
-      .input("shift", sql.NVarChar, shift)
-      .input("service", sql.NVarChar, service)
-      .input("recordNumber", sql.NVarChar, recordNumber)
-      .input("counter", sql.VarChar, counter)
-      .input("userId", sql.NVarChar, userId)
-      .input("subService", sql.NVarChar, subService)
-      .input("recordType", sql.NVarChar, recordType)
-      .query(
-        `
-          INSERT INTO Record (id, name, ticket, value, shift, service, recordNumber, counter, userId, subService, recordType)
-          VALUES (@id, @name, @ticketNumber, @value, @shift, @service, @recordNumber, @counter, @userId, @subService, @recordType)
-        `
-      );
-
-    // Assuming `revalidatePath` is a function for revalidating the path for the dashboard
+    // Revalidate the dashboard path
     revalidatePath(`/dashboard/${session?.user.role}/records/create`);
 
     return {
       ...prevState,
       message: "Record created successfully",
       response: "ok",
+      state_error: null,
     };
-  } catch (e) {
-    console.error(e);
+  } catch (error) {
+    console.error("Failed to create record:", error);
     return {
       ...prevState,
       state_error: "Something went wrong! Failed to create record.",
@@ -672,49 +640,58 @@ export async function requestEditRecord(
   const session = await auth();
 
   try {
-    const pool = await poolPromise; // Await the pool connection
+    // 1. Check if an edit request already exists
+    const checkResult = await pool.query(
+      `
+      SELECT COUNT(*) AS count
+        FROM "EditedRecord"
+       WHERE "recordId" = $1
+      `,
+      [recordId]
+    );
+    const alreadyEdited = parseInt(checkResult.rows[0].count, 10) > 0;
 
-    //check if the record had previously been requested for edit
-
-    const result = await pool
-      .request()
-      .input("recordId", sql.VarChar, recordId) // Define the input parameter type and value
-      .query(`SELECT COUNT(*) AS count FROM EditedRecord WHERE id = @recordId`);
-
-    const recordExists = result.recordset[0].count > 0;
-
-    if (recordExists) {
-      return { state_error: "Can not edit! The record was already edited" };
-    } else {
-      // Use parameterized query to insert the edited record
-      await pool
-        .request()
-        .input("id", sql.NVarChar, id)
-        .input("name", sql.NVarChar, name)
-        .input("ticketNumber", sql.NVarChar, ticketNumber)
-        .input("value", sql.Float, value)
-        .input("shift", sql.NVarChar, shift)
-        .input("service", sql.NVarChar, service)
-        .input("recordNumber", sql.NVarChar, recordNumber)
-        .input("counter", sql.VarChar, counter)
-        .input("userId", sql.NVarChar, userId)
-        .input("subService", sql.NVarChar, subService)
-        .input("recordType", sql.NVarChar, recordType)
-        .input("recordId", sql.NVarChar, recordId)
-        .input("status", sql.NVarChar, "pending")
-        .input("attendantComment", sql.NVarChar, attendantComment)
-        .query(
-          `
-          INSERT INTO EditedRecord (id, name, ticket, value, shift, service, recordNumber, counter, attendantId, subService, recordType, recordId, status, attendantComment)
-          VALUES (@id, @name, @ticketNumber, @value, @shift, @service, @recordNumber, @counter, @userId, @subService, @recordType, @recordId, @status, @attendantComment)
-        `
-        );
+    if (alreadyEdited) {
+      return {
+        ...prevState,
+        state_error: "Cannot edit! The record was already edited.",
+      };
     }
 
-    // Assuming `revalidatePath` is a function for revalidating the path for the dashboard
+    // 2. Insert the new edited record
+    await pool.query(
+      `
+      INSERT INTO "EditedRecord"
+        ("id","name","ticket","value","shift","service",
+         "recordNumber","counter","attendantId","subService",
+         "recordType","recordId","status","attendantComment")
+      VALUES
+        ($1,   $2,    $3,     $4,    $5,      $6,
+         $7,            $8,     $9,           $10,
+         $11,          $12,     $13,            $14)
+      `,
+      [
+        id,
+        name,
+        ticketNumber,
+        value,
+        shift,
+        service,
+        recordNumber,
+        counter,
+        userId,
+        subService,
+        recordType,
+        recordId,
+        "pending",
+        attendantComment,
+      ]
+    );
+
+    // 3. Revalidate the dashboard route
     revalidatePath(`/dashboard/${session?.user.role}/records/create`);
-  } catch (e) {
-    console.error(e);
+  } catch (error) {
+    console.error("Failed to submit edit request:", error);
     return {
       ...prevState,
       state_error: "Something went wrong! Failed to send request.",
@@ -778,41 +755,37 @@ export async function editRecord(
   const session = await auth();
 
   try {
-    const pool = await poolPromise; // Await the pool connection
-
-    // Use parameterized query to update the record
-    await pool
-      .request()
-      .input("name", sql.NVarChar, name)
-      .input("ticketNumber", sql.NVarChar, ticketNumber)
-      .input("recordType", sql.NVarChar, recordType)
-      .input("value", sql.Float, value)
-      .input("shift", sql.NVarChar, shift)
-      .input("service", sql.NVarChar, service)
-      .input("recordNumber", sql.NVarChar, recordNumber)
-      .input("counter", sql.VarChar, counter)
-      .input("userId", sql.NVarChar, userId)
-      .input("subService", sql.NVarChar, subService)
-      .input("id", sql.NVarChar, id)
-      .query(
-        `
-          UPDATE Record
-          SET
-            name = @name,
-            ticket = @ticketNumber,
-            recordType = @recordType,
-            value = @value,
-            shift = @shift,
-            service = @service,
-            recordNumber = @recordNumber,
-            counter = @counter,
-            userId = @userId,
-            subService = @subService
-          WHERE id = @id
-        `
-      );
-  } catch (e) {
-    console.error(e);
+    await pool.query(
+      `
+      UPDATE "Record"
+         SET "name"        = $1,
+             "ticket"      = $2,
+             "recordType"  = $3,
+             "value"       = $4,
+             "shift"       = $5,
+             "service"     = $6,
+             "recordNumber"= $7,
+             "counter"     = $8,
+             "userId"      = $9,
+             "subService"  = $10
+       WHERE "id"          = $11
+      `,
+      [
+        name,
+        ticketNumber,
+        recordType,
+        value,
+        shift,
+        service,
+        recordNumber,
+        counter,
+        userId,
+        subService,
+        id,
+      ]
+    );
+  } catch (error) {
+    console.error("Failed to update record:", error);
     return {
       state_error: "Something went wrong! Failed to update record.",
       response: null,
@@ -851,30 +824,20 @@ export async function editRequestEditRecord(
   const session = await auth();
 
   try {
-    const pool = await poolPromise; // Await the pool connection
-
-    // Use parameterized query to update the record
-    await pool
-      .request()
-      .input("status", sql.NVarChar, status)
-      .input("supervisorId", sql.NVarChar, supervisorId)
-      .input("supervisorComment", sql.NVarChar, supervisorComment)
-      .input("id", sql.NVarChar, id)
-      .query(
-        `
-          UPDATE EditedRecord
-          SET
-            status = @status,
-            supervisorId = @supervisorId,
-            supervisorComment = @supervisorComment
-          WHERE id = @id
-        `
-      );
+    await pool.query(
+      `
+      UPDATE "EditedRecord"
+         SET "status"            = $1,
+             "supervisorId"      = $2,
+             "supervisorComment" = $3
+       WHERE "id"                = $4
+      `,
+      [status, supervisorId, supervisorComment, id]
+    );
   } catch (error) {
-    console.error("Something went wrong updating edited record", error);
+    console.error("Something went wrong updating edited record:", error);
     return {
       state_error: "Something went wrong! Failed to update record.",
-      response: null,
     };
   }
   revalidatePath(`/dashboard/${session?.user.role}/notification`);
@@ -883,215 +846,171 @@ export async function editRequestEditRecord(
 
 export async function fetchRecordsByAttendant(userId: string) {
   try {
-    const pool = await poolPromise;
+    const result = await pool.query(
+      `
+      SELECT
+        r."id"             AS "recordId",
+        r."ticket"         AS "ticket",
+        r."recordType"     AS "recordType",
+        r."name"           AS "name",
+        r."service"        AS "service",
+        r."subService"     AS "subService",
+        r."recordNumber"   AS "recordNumber",
+        r."value"          AS "value",
+        r."counter"        AS "counter",
+        r."shift"          AS "shift",
+        r."userId"         AS "userId",
+        r."createdAt"      AS "recordCreatedAt",
+        r."updatedAt"      AS "recordUpdatedAt",
+        u."id"             AS "userId",
+        u."name"           AS "userName",
+        u."email"          AS "userEmail",
+        u."station"        AS "userStation",
+        u."createdAt"      AS "userCreatedAt",
+        SUM(r."value")                 OVER () AS "totalValue",
+        SUM(CASE WHEN r."recordType" = 'invoice' THEN r."value" ELSE 0 END) OVER () AS "invoiceTotal",
+        SUM(CASE WHEN r."recordType" = 'receipt' THEN r."value" ELSE 0 END) OVER () AS "receiptTotal"
+      FROM "Record" r
+      JOIN "User" u
+        ON r."userId" = u."id"
+      WHERE r."userId" = $1
+      ORDER BY r."createdAt" DESC
+      `,
+      [userId]
+    );
 
-    const res = await pool
-      .request()
-      .input("userId", sql.NVarChar, userId)
-      .query(
-        `
-        SELECT 
-          r.id AS recordId,
-          r.ticket,
-          r.recordType,
-          r.name,
-          r.service,
-          r.subService,
-          r.recordNumber,
-          r.value,
-          r.counter,
-          r.shift,
-          r.userId,
-          r.createdAt AS recordCreatedAt,
-          r.updatedAt AS recordUpdatedAt,
-          u.id AS userId,
-          u.name AS userName,
-          u.email AS userEmail,
-          u.station As userStation,
-          u.createdAt AS userCreatedAt,
-          SUM(r.value) OVER() AS totalValue,
-          SUM(CASE WHEN r.recordType = 'invoice' THEN r.value ELSE 0 END) OVER () AS invoiceTotal,
-          SUM(CASE WHEN r.recordType = 'receipt' THEN r.value ELSE 0 END) OVER () AS receiptTotal,
-          u.createdAt AS userCreatedAt
-        FROM Record r
-        JOIN [User] u ON r.userId = u.id
-        WHERE r.userId = @userId
-        ORDER BY r.createdAt DESC
-        `
-      );
-
-    const records = res.recordset;
-
-    if (records.length > 0) {
-      return records;
-    } else {
-      return [];
-    }
+    return result.rows;
   } catch (error) {
-    console.error("Something went wrong fetching records", error);
+    console.error("Something went wrong fetching records:", error);
     return [];
   }
 }
 
 export async function fetchRecords() {
   try {
-    const pool = await poolPromise;
+    const result = await pool.query(`
+      SELECT 
+        r."id"               AS "recordId",
+        r."ticket",
+        r."recordType",
+        r."name",
+        r."service",
+        r."subService",
+        r."recordNumber",
+        r."value",
+        r."userId"           AS "recordUserId",
+        r."createdAt"        AS "recordCreatedAt",
+        r."updatedAt"        AS "recordUpdatedAt",
+        u."counter",
+        u."shift",
+        u."id"               AS "userId",
+        u."name"             AS "userName",
+        u."email"            AS "userEmail",
+        u."counter"          AS "userCounter",
+        u."station"          AS "userStation",
+        u."createdAt"        AS "userCreatedAt",
+        SUM(r."value")                   OVER () AS "totalValue",
+        SUM(CASE WHEN r."recordType" = 'invoice' THEN r."value" ELSE 0 END) OVER () AS "invoiceTotal",
+        SUM(CASE WHEN r."recordType" = 'receipt' THEN r."value" ELSE 0 END) OVER () AS "receiptTotal"
+      FROM "Record" r
+      JOIN "User" u
+        ON r."userId" = u."id"
+      ORDER BY r."createdAt" DESC
+    `);
 
-    const res = await pool.request().query(`
-        SELECT 
-          r.id AS recordId,
-          r.ticket,
-          r.recordType,
-          r.name,
-          r.service,
-          r.subService,
-          r.recordNumber,
-          r.value,
-          r.userId AS recordUserId,
-          r.createdAt AS recordCreatedAt,
-          r.updatedAt AS recordUpdatedAt,
-          u.counter,
-          u.shift,
-          u.id AS userId,
-          u.name AS userName,
-          u.email AS userEmail,
-          u.counter AS userCounter,
-          u.station AS userStation,
-          u.createdAt AS userCreatedAt,
-          SUM(r.value) OVER() AS totalValue,
-          SUM(CASE WHEN r.recordType = 'invoice' THEN r.value ELSE 0 END) OVER () AS invoiceTotal,
-          SUM(CASE WHEN r.recordType = 'receipt' THEN r.value ELSE 0 END) OVER () AS receiptTotal
-        FROM Record r
-        JOIN [User] u ON r.userId = u.id
-        ORDER BY r.createdAt DESC
-      `);
-
-    const records = res.recordset;
-
-    if (records.length > 0) {
-      return records;
-    } else {
-      return [];
-    }
+    return result.rows;
   } catch (error) {
-    console.error("Something went wrong fetching records", error);
+    console.error("Something went wrong fetching records:", error);
     return [];
   }
 }
 
 export async function fetchRequestEditRecords() {
   try {
-    const pool = await poolPromise;
+    const result = await pool.query(`
+      SELECT 
+        r."id"                       AS "id",
+        r."recordId"                 AS "recordId",
+        r."ticket",
+        r."recordType",
+        r."name",
+        r."service",
+        r."subService",
+        r."recordNumber",
+        r."value",
+        r."attendantId",
+        r."status",
+        r."attendantComment",
+        r."createdAt"                AS "editedRecordCreatedAt",
+        r."updatedAt"                AS "editedRecordUpdatedAt",
+        u."id"                       AS "userId",
+        u."counter",
+        u."shift",
+        u."name"                     AS "userName",
+        u."email"                    AS "userEmail",
+        u."station"                  AS "userStation",
+        u."image"                    AS "userImage"
+      FROM "EditedRecord" r
+      JOIN "User" u
+        ON r."attendantId" = u."id"
+      ORDER BY r."createdAt" DESC
+    `);
 
-    const res = await pool.request().query(`
-        SELECT 
-          r.id AS id,
-          r.recordId AS recordId,
-          r.ticket,
-          r.recordType,
-          r.name,
-          r.service,
-          r.subService,
-          r.recordNumber,
-          r.value,
-          r.attendantId,
-          r.status,
-          r.attendantComment,
-          r.createdAt AS editedRecordCreatedAt,
-          r.updatedAt AS editedRecordUpdatedAt,
-          u.id AS userId,
-          u.counter,
-          u.shift,
-          u.name AS userName,
-          u.email AS userEmail,
-          u.station AS userStation,
-          u.image AS userImage
-        FROM EditedRecord r
-        JOIN [User] u ON r.attendantId = u.id
-      `);
-
-    const records = res.recordset;
-
-    if (records.length > 0) {
-      return records;
-    } else {
-      return [];
-    }
+    return result.rows;
   } catch (error) {
-    console.error(
-      "Something went wrong fetching requested edit records",
-      error
-    );
+    console.error("Something went wrong fetching edit requests:", error);
     return [];
   }
 }
 
 export async function fetchRequestEditRecordsByUser(id: string) {
   try {
-    const pool = await poolPromise;
+    const query = `
+      SELECT 
+        r.id AS "recordId",
+        r.ticket,
+        r."recordType",
+        r.name,
+        r.service,
+        r."subService",
+        r."recordNumber",
+        r.value,
+        r.counter,
+        r.shift,
+        r."userId",
+        r."createdAt" AS "recordCreatedAt",
+        r."updatedAt" AS "recordUpdatedAt",
+        u.id AS "userId",
+        u.name AS "userName",
+        u.email AS "userEmail",
+        u.station AS "userStation",
+        u."createdAt" AS "userCreatedAt",
+        SUM(r.value) OVER() AS "totalValue",
+        SUM(CASE WHEN r."recordType" = 'invoice' THEN r.value ELSE 0 END) OVER () AS "invoiceTotal",
+        SUM(CASE WHEN r."recordType" = 'receipt' THEN r.value ELSE 0 END) OVER () AS "receiptTotal"
+      FROM "Record" r
+      JOIN "User" u ON r."userId" = u.id
+      WHERE r."userId" = $1
+      ORDER BY r."createdAt" DESC
+    `;
 
-    const res = await pool.request().input("attendantId", sql.VarChar, id)
-      .query(`
-        SELECT 
-          r.id AS id,
-          r.recordId AS recordId,
-          r.ticket,
-          r.recordType,
-          r.name,
-          r.service,
-          r.subService,
-          r.recordNumber,
-          r.value,
-          r.counter,
-          r.shift,
-          r.attendantId,
-          r.status,
-          r.attendantComment,
-          r.supervisorComment,
-          r.createdAt AS editedRecordCreatedAt,
-          r.updatedAt AS editedRecordUpdatedAt,
-          u.id AS userId,
-          u.name AS userName,
-          u.email AS userEmail,
-          u.image AS userImage,
-          s.id AS supervisorId,
-          s.name AS supervisorName
-        FROM EditedRecord r
-        JOIN [User] u ON r.attendantId = u.id
-        LEFT JOIN [User] s ON r.supervisorId = s.id
-        WHERE u.id = @attendantId
-        ORDER BY r.createdAt DESC
-      `);
-
-    const records = res.recordset;
-
-    if (records.length > 0) {
-      return records;
-    } else {
-      return [];
-    }
+    const res = await pool.query(query, [id]);
+    return res.rows || [];
   } catch (error) {
-    console.error(
-      "Something went wrong fetching requested edit records",
-      error
-    );
+    console.error("Something went wrong fetching records:", error);
     return [];
   }
 }
 
 export async function getRecord(id: string) {
   try {
-    const pool = await poolPromise;
+    const query = `SELECT * FROM "Record" WHERE id = $1`;
+    const res = await pool.query(query, [id]);
 
-    const res = await pool
-      .request()
-      .input("id", sql.VarChar, id)
-      .query("SELECT * FROM [Record] WHERE id = @id");
-
-    const records = res.recordset;
-
-    if (records.length > 0) {
-      return records[0];
+    if (res.rows.length > 0) {
+      return res.rows[0];
+    } else {
+      return null;
     }
   } catch (error) {
     console.error("Error fetching record:", error);
@@ -1101,20 +1020,19 @@ export async function getRecord(id: string) {
 
 export async function getEditedRecord(id: string) {
   try {
-    const pool = await poolPromise;
+    const query = `
+      SELECT * 
+      FROM "EditedRecord" 
+      WHERE "recordId" = $1 AND status = $2
+    `;
+    const values = [id, "accepted"];
 
-    const res = await pool
-      .request()
-      .input("recordId", sql.VarChar, id)
-      .input("status", sql.VarChar, "accepted")
-      .query(
-        "SELECT * FROM [EditedRecord] WHERE [recordId] = @recordId AND status = @status"
-      );
+    const res = await pool.query(query, values);
 
-    const records = res.recordset;
-
-    if (records.length > 0) {
-      return records[0];
+    if (res.rows.length > 0) {
+      return res.rows[0];
+    } else {
+      return null;
     }
   } catch (error) {
     console.error("Error fetching edited record:", error);
@@ -1127,7 +1045,6 @@ export async function fetchGroupedRecordsByDateRange(
   endDate: string
 ): Promise<LocalRecords[] | undefined> {
   try {
-    // Authenticate and get the user session
     const session = await auth();
     if (!session || !session.user) {
       throw new Error("User session not found.");
@@ -1136,90 +1053,77 @@ export async function fetchGroupedRecordsByDateRange(
     const userId = session.user.id;
     const userRole = session.user.role;
 
-    // Construct the query dynamically based on the user's role and user's station
+    const params: string[] = [startDate, endDate];
+    let userFilterClause = "";
+
+    if (userRole === "attendant") {
+      userFilterClause = `AND r."userId" = $3`;
+      params.push(userId);
+    }
+
     const query = `
-    WITH Edited AS (
+      WITH Edited AS (
+        SELECT 
+            e."recordId",
+            e."attendantId", 
+            e."service", 
+            e."subService", 
+            e."value", 
+            u."counter", 
+            u."shift", 
+            e."recordType",
+            e."name",
+            e."createdAt",
+            u."station" AS "userStation"
+        FROM "EditedRecord" e
+        JOIN "User" u ON e."attendantId" = u.id
+        WHERE e."status" = 'accepted'
+      ),
+      MergedRecords AS (
+        SELECT 
+            COALESCE(e."recordId", r.id) AS id,
+            COALESCE(e."service", r."service") AS service,
+            COALESCE(e."subService", r."subService") AS "subService",
+            COALESCE(e."value", r."value") AS value,
+            COALESCE(u."counter", u."counter") AS counter,
+            COALESCE(u."shift", u."shift") AS shift,
+            COALESCE(e."recordType", r."recordType") AS "recordType",
+            COALESCE(e."name", r."name") AS name,
+            COALESCE(e."createdAt", r."createdAt") AS "createdAt",
+            u."station" AS "userStation"
+        FROM "Record" r
+        LEFT JOIN Edited e ON r.id = e."recordId"
+        LEFT JOIN "User" u ON r."userId" = u.id
+        WHERE r."recordType" = 'invoice'
+        ${userFilterClause}
+      )
       SELECT 
-          e.recordId,
-          e.attendantId, 
-          e.service, 
-          e.subService, 
-          e.value, 
-          u.counter, 
-          u.shift, 
-          e.recordType,
-          e.name,
-          e.createdAt,
-          u.station AS userStation
-      FROM EditedRecord e
-      JOIN [User] u ON e.attendantId = u.id
-      WHERE e.status = 'accepted'
-    ),
-    MergedRecords AS (
-      SELECT 
-          COALESCE(e.recordId, r.id) AS id,
-          COALESCE(e.service, r.service) AS service,
-          COALESCE(e.subService, r.subService) AS subService,
-          COALESCE(e.value, r.value) AS value,
-          COALESCE(u.counter, u.counter) AS counter,
-          COALESCE(u.shift, u.shift) AS shift,
-          COALESCE(e.recordType, r.recordType) AS recordType,
-          COALESCE(e.name, r.name) AS name,
-          COALESCE(e.createdAt, r.createdAt) AS createdAt,
-          u.station AS userStation
-      FROM Record r
-      LEFT JOIN Edited e ON r.id = e.recordId
-      LEFT JOIN [User] u ON r.userId = u.id
-      WHERE r.recordType = 'invoice'
-      ${userRole === "attendant" ? `AND r.userId = @userId` : ""}
-    )
-    SELECT 
-    CONVERT(VARCHAR, m.createdAt, 23) AS date,   -- 'YYYY-MM-DD'
-    CONVERT(VARCHAR, m.createdAt, 108) AS time,  -- Extract time 'HH:mm' (Daily Analysis)
-    DATENAME(WEEKDAY, m.createdAt) AS dayName,   -- Extract day name (Weekly Analysis)
-    DATEPART(WW, m.createdAt) AS week,           -- Extract week number (Monthly Analysis)
-    DATENAME(MONTH, m.createdAt) AS month,       -- Extract month name (Yearly Analysis)
-    m.service,
-    m.userStation,
-    SUM(m.value) AS totalValue,
-    COUNT(*) AS count
-FROM MergedRecords m
-WHERE m.createdAt BETWEEN @startDate AND @endDate
-GROUP BY 
-    CONVERT(VARCHAR, m.createdAt, 23), 
-    CONVERT(VARCHAR, m.createdAt, 108),
-    DATENAME(WEEKDAY, m.createdAt),
-    DATEPART(WW, m.createdAt), 
-    DATENAME(MONTH, m.createdAt),
-    m.service,
-    m.userStation
-ORDER BY 
-    CONVERT(VARCHAR, m.createdAt, 23) DESC, time DESC;
+        TO_CHAR(m."createdAt", 'YYYY-MM-DD') AS date,
+        TO_CHAR(m."createdAt", 'HH24:MI:SS') AS time,
+        TO_CHAR(m."createdAt", 'Day') AS "dayName",
+        EXTRACT(WEEK FROM m."createdAt")::INT AS week,
+        TO_CHAR(m."createdAt", 'Month') AS month,
+        m.service,
+        m."userStation",
+        SUM(m.value)::FLOAT AS "totalValue",
+        COUNT(*)::INT AS count
+      FROM MergedRecords m
+      WHERE m."createdAt" BETWEEN $1 AND $2
+      GROUP BY 
+        date, time, "dayName", week, month, m.service, m."userStation"
+      ORDER BY 
+        date DESC, time DESC
     `;
 
-    // Prepare the query parameters
-    userRole === "attendant"
-      ? [startDate, endDate, userId]
-      : [startDate, endDate];
+    const result = await pool.query(query, params);
 
-    // Execute the query using mssql's parameterized queries
-
-    const pool = await poolPromise;
-    const result = await pool
-      .request()
-      .input("startDate", sql.DateTime, startDate)
-      .input("endDate", sql.DateTime, endDate)
-      .input("userId", sql.VarChar, userId) // Only used for 'attendant' role
-      .query(query);
-
-    // Process the results
-    const records = result.recordset.map((row) => ({
-      ...row,
-      totalValue: row.totalValue ? Number(row.totalValue) : 0,
-      count: row.count ? Number(row.count) : 0,
-    }));
-
-    return records.length > 0 ? records : undefined;
+    return result.rows.length > 0
+      ? result.rows.map((row) => ({
+          ...row,
+          totalValue: row.totalValue || 0,
+          count: row.count || 0,
+        }))
+      : undefined;
   } catch (error) {
     console.error(
       "Something went wrong fetching grouped records by date range",

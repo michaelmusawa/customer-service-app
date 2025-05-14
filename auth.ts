@@ -36,24 +36,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               const pool = await poolPromise; // Ensure the pool is connected
               const sessionToken = `token-${Date.now()}`; // Generate a session token
               const expirationDate = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24-hour expiration
-          
+
               // Insert session into the database
-              const result = await pool.request()
-                .input('userId', sql.VarChar, user.id) // Bind the user ID
-                .input('sessionToken', sql.VarChar, sessionToken) // Bind the session token
-                .input('expires', sql.DateTime, expirationDate) // Bind the expiration date
+              const result = await pool
+                .request()
+                .input("userId", sql.VarChar, user.id) // Bind the user ID
+                .input("sessionToken", sql.VarChar, sessionToken) // Bind the session token
+                .input("expires", sql.DateTime, expirationDate) // Bind the expiration date
                 .query(`
                   INSERT INTO [Session] (userId, sessionToken, expires)
                   OUTPUT INSERTED.*
                   VALUES (@userId, @sessionToken, @expires)
                 `);
-          
+
               const session = result.recordset[0]; // The newly created session
-          
+
               // Return user with the role
               return { ...user, role: user.role };
             } catch (error) {
-              console.error('Something went wrong creating a session:', error);
+              console.error("Something went wrong creating a session:", error);
             }
           }
         }

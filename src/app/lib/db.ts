@@ -1,12 +1,12 @@
-// import { Pool } from 'pg';
+import { Pool } from "pg";
 
-// const pool = new Pool ({
-//     connectionString: process.env.DATABASE_URL,
-// });
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
 
-// export default pool;
+export default pool;
 
-import sql from "mssql";
+// import sql from "mssql";
 
 // DATABASE_URL="sqlserver://172.16.10.3:1433;database=customerservice;username=Customer_Service_sys;password=Ncc@CS2025;encrypt=true;integratedSecurity=true;trustServerCertificate=true;"
 
@@ -21,15 +21,15 @@ import sql from "mssql";
 //   },
 // });
 
-const poolPromise = sql.connect({
-  user: "Customer_Service_sys",
-  password: "Ncc@CS2025",
-  server: "172.16.10.3",
-  database: "customerservicetest",
-  options: {
-    encrypt: false,
-    trustServerCertificate: true,
-  },
-});
+// const poolPromise = sql.connect({
+//   user: "Customer_Service_sys",
+//   password: "Ncc@CS2025",
+//   server: "172.16.10.3",
+//   database: "customerservicetest",
+//   options: {
+//     encrypt: false,
+//     trustServerCertificate: true,
+//   },
+// });
 
-export default poolPromise;
+// export default poolPromise;
